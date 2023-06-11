@@ -5,16 +5,16 @@ use std::{
 };
 
 #[derive(Debug)]
-struct Move(String);
+pub struct Move(String);
 
 #[derive(Debug)]
-struct Pgn {
-    moves: Vec<Move>,
-    result: String,
+pub struct Pgn {
+    pub moves: Vec<Move>,
+    pub result: String,
 }
 
 impl Pgn {
-    fn load(path: impl AsRef<Path>) -> io::Result<Self> {
+    pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let f = File::open(path)?;
         let r = BufReader::new(f);
         let mut moves = Vec::new();

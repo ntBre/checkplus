@@ -4,7 +4,12 @@ use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 
+use crate::board::Board;
+use crate::pgn::Pgn;
+
 mod pgn;
+
+mod board;
 
 struct Stockfish {
     stdin: ChildStdin,
@@ -74,6 +79,11 @@ impl Stockfish {
 }
 
 fn main() {
+    let pgn = Pgn::load("testfiles/sample.pgn").unwrap();
+    println!("{pgn:?}");
+    let board = Board::new();
+    println!("{board}");
+
     let mut stockfish = Stockfish::new();
 
     stockfish.send("isready");

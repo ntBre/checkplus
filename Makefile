@@ -1,2 +1,2 @@
 test:
-	cargo test -- --nocapture
+	cargo test -- --nocapture --test-threads=1 $(ARGS)

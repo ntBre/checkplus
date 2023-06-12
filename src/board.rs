@@ -1,11 +1,11 @@
-use std::fmt::Display;
+use std::{default, fmt::Display};
 
 use crate::{board::file::File, pgn::Move};
 
 mod display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum PieceType {
+pub enum PieceType {
     King,
     Queen,
     Rook,
@@ -38,9 +38,13 @@ impl Color {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum Piece {
-    Some { typ: PieceType, color: Color },
+#[derive(Clone, Copy, Debug, Default)]
+pub enum Piece {
+    Some {
+        typ: PieceType,
+        color: Color,
+    },
+    #[default]
     None,
 }
 
@@ -119,6 +123,25 @@ pub struct Board {
     board: [[Piece; 8]; 8],
 }
 
+mod index {
+    use super::{Board, Piece};
+    use std::ops::{Index, IndexMut};
+
+    impl Index<(usize, usize)> for Board {
+        type Output = Piece;
+
+        fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
+            &self.board[i][j]
+        }
+    }
+
+    impl IndexMut<(usize, usize)> for Board {
+        fn index_mut(&mut self, (i, j): (usize, usize)) -> &mut Self::Output {
+            &mut self.board[i][j]
+        }
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         use Piece as P;
@@ -138,15 +161,15 @@ impl Board {
     pub(crate) fn make_move(&mut self, m: &Move) {
         // TODO factor this into Move itself. should parse into whatever I need
         // here from the beginning
-	let mut found = None;
         match m.mov.len() {
             2 => {
                 // forward pawn move
                 let chars: Vec<_> = m.mov.chars().collect();
                 let file = File::from(chars[0]);
                 let rank = chars[1].to_digit(10).unwrap() - 1;
-                'outer: for (i, row) in self.board.iter().enumerate() {
-                    for (j, p) in row.iter().enumerate() {
+                for i in 0..8 {
+                    for j in 0..8 {
+                        let p = self[(i, j)];
                         let Piece::Some{ typ, color } = p else {
 			    continue;
 			};
@@ -158,25 +181,23 @@ impl Board {
                             std::ops::Add::add
                         };
 
-                        // if it's on its start square it can move two (to
-                        // either i = 3 or i = 4) otherwise
-
-                        dbg!(&m.mov);
-                        dbg!(start_square);
-                        dbg!(i, j, p);
                         // we know it's not a pawn capture, so the pawn must be
                         // in the same file
                         if file as usize == j
-                            && *color == m.color
-                            && *typ == PieceType::Pawn
+                            && color == m.color
+                            && typ == PieceType::Pawn
                             && ((start_square && op(j, 2) == rank as usize)
                                 || op(j, 1) == rank as usize)
                         {
-			    // we found the right piece, but now I need to make
-			    // the move. pretty sure I can't do it inside of
-			    // this because I'm iterating over board
-			    found = Some((i, j));
-			    break 'outer;
+                            // we found the right piece, but now I need to make
+                            // the move. pretty sure I can't do it inside of
+                            // this because I'm iterating over board
+                            //
+                            // rank and file give the target square, ij give the
+                            // original
+                            self[(file as usize, rank as usize)] =
+                                std::mem::take(&mut self[(i, j)]);
+                            return;
                         }
                     }
                 }
@@ -199,11 +220,7 @@ impl Board {
             }
             _ => unimplemented!(),
         }
-	if let Some((i, j)) = found {
-	    self.board[
-	} else {
-	    panic!("malformed PGN");
-	}
+        todo!();
     }
 
     /// return the FEN representation of `self`

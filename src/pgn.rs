@@ -4,8 +4,20 @@ use std::{
     path::Path,
 };
 
+use crate::board::Color;
+
 #[derive(Debug)]
-pub struct Move(String);
+pub struct Move {
+    pub(crate) mov: String,
+    pub(crate) color: Color,
+}
+
+impl Move {
+    pub fn new(mov: impl Into<String>, color: Color) -> Self {
+        let mov = mov.into().replace("+", "");
+        Self { mov, color }
+    }
+}
 
 #[derive(Debug)]
 pub struct Pgn {
@@ -34,11 +46,14 @@ impl Pgn {
         let mut chunks = moves.array_chunks::<3>();
         let mut moves = Vec::new();
         while let Some([_, w, b]) = chunks.next() {
-            moves.extend([Move(w.clone()), Move(b.clone())]);
+            moves.extend([
+                Move::new(w, Color::White),
+                Move::new(b, Color::Black),
+            ]);
         }
         match chunks.remainder() {
             [_] => {}
-            [_, w] => moves.push(Move(w.clone())),
+            [_, w] => moves.push(Move::new(w, Color::White)),
             // if there were 3, chunks would have gotten it, and I already
             // covered 1 and 2
             _ => unreachable!(),

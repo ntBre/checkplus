@@ -10,19 +10,20 @@ mod stockfish;
 
 fn main() {
     let pgn = Pgn::load("testfiles/sample.pgn").unwrap();
-    println!("{pgn:?}");
-    let board = Board::new();
-    println!("{board}");
+    let mut board = Board::new();
 
     let mut stockfish = Stockfish::new();
 
     stockfish.send("isready");
     stockfish.receive("readyok");
 
-    let fen = "8/7p/4p3/8/3k4/2p5/4R1KP/8; w - - 0 43";
+    for (i, m) in pgn.moves.iter().enumerate() {
+        board.make_move(m);
+        let fen = board.fen();
+        stockfish.set_position(fen);
+        let score = stockfish.get_score(20);
+        println!("{i} {score}");
+    }
 
-    stockfish.set_position(fen);
-
-    let score = stockfish.get_score(20);
-    println!("score = {score}");
+    // let fen = "8/7p/4p3/8/3k4/2p5/4R1KP/8; w - - 0 43";
 }

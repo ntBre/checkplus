@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
-#[derive(Clone, Copy)]
+use crate::{board::file::File, pgn::Move};
+
+mod display;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum PieceType {
     King,
     Queen,
@@ -10,25 +14,31 @@ enum PieceType {
     Pawn,
 }
 
-#[derive(Clone, Copy)]
-enum Color {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Color {
     Black,
     White,
 }
 
-macro_rules! black {
-    ($($pt:ident $(,)*)*) => {
-	[$(Piece::Some { typ: PieceType::$pt, color: Color::Black },)*]
+impl Color {
+    /// Returns `true` if the color is [`Black`].
+    ///
+    /// [`Black`]: Color::Black
+    #[must_use]
+    pub fn is_black(&self) -> bool {
+        matches!(self, Self::Black)
+    }
+
+    /// Returns `true` if the color is [`White`].
+    ///
+    /// [`White`]: Color::White
+    #[must_use]
+    pub fn is_white(&self) -> bool {
+        matches!(self, Self::White)
     }
 }
 
-macro_rules! white {
-    ($($pt:ident $(,)*)*) => {
-	[$(Piece::Some { typ: PieceType::$pt, color: Color::White },)*]
-    }
-}
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Piece {
     Some { typ: PieceType, color: Color },
     None,
@@ -60,6 +70,51 @@ impl Display for Piece {
     }
 }
 
+mod file {
+    #[derive(Clone, Copy, Debug)]
+    #[repr(u8)]
+    pub enum File {
+        A = 0,
+        B = 1,
+        C = 2,
+        D = 3,
+        E = 4,
+        F = 5,
+        G = 6,
+        H = 7,
+    }
+
+    impl From<char> for File {
+        fn from(c: char) -> Self {
+            match c {
+                'a' => File::A,
+                'b' => File::B,
+                'c' => File::C,
+                'd' => File::D,
+                'e' => File::E,
+                'f' => File::F,
+                'g' => File::G,
+                'h' => File::H,
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+/// construct a row of black pieces
+macro_rules! black {
+    ($($pt:ident $(,)*)*) => {
+	[$(Piece::Some { typ: PieceType::$pt, color: Color::Black },)*]
+    }
+}
+
+/// construct a row of white pieces
+macro_rules! white {
+    ($($pt:ident $(,)*)*) => {
+	[$(Piece::Some { typ: PieceType::$pt, color: Color::White },)*]
+    }
+}
+
 pub struct Board {
     board: [[Piece; 8]; 8],
 }
@@ -79,16 +134,80 @@ impl Board {
         ];
         Self { board }
     }
-}
 
-impl Display for Board {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in self.board {
-            for p in row {
-                write!(f, "{p}")?;
+    pub(crate) fn make_move(&mut self, m: &Move) {
+        // TODO factor this into Move itself. should parse into whatever I need
+        // here from the beginning
+	let mut found = None;
+        match m.mov.len() {
+            2 => {
+                // forward pawn move
+                let chars: Vec<_> = m.mov.chars().collect();
+                let file = File::from(chars[0]);
+                let rank = chars[1].to_digit(10).unwrap() - 1;
+                'outer: for (i, row) in self.board.iter().enumerate() {
+                    for (j, p) in row.iter().enumerate() {
+                        let Piece::Some{ typ, color } = p else {
+			    continue;
+			};
+                        let start_square = (color.is_white() && i == 6)
+                            || (color.is_black() && i == 1);
+                        let op = if color.is_white() {
+                            std::ops::Sub::sub
+                        } else {
+                            std::ops::Add::add
+                        };
+
+                        // if it's on its start square it can move two (to
+                        // either i = 3 or i = 4) otherwise
+
+                        dbg!(&m.mov);
+                        dbg!(start_square);
+                        dbg!(i, j, p);
+                        // we know it's not a pawn capture, so the pawn must be
+                        // in the same file
+                        if file as usize == j
+                            && *color == m.color
+                            && *typ == PieceType::Pawn
+                            && ((start_square && op(j, 2) == rank as usize)
+                                || op(j, 1) == rank as usize)
+                        {
+			    // we found the right piece, but now I need to make
+			    // the move. pretty sure I can't do it inside of
+			    // this because I'm iterating over board
+			    found = Some((i, j));
+			    break 'outer;
+                        }
+                    }
+                }
             }
-            writeln!(f)?;
+            3 if m.mov.contains("-") => {
+                // short castle
+            }
+            3 => {
+                // regular piece move
+            }
+            4 if m.mov.contains("x") => {
+                // capture
+            }
+            4 => {
+                // disambiguating moves like Ref7
+            }
+            5 => {
+                // long castle
+                assert_eq!(m.mov, "O-O-O");
+            }
+            _ => unimplemented!(),
         }
-        Ok(())
+	if let Some((i, j)) = found {
+	    self.board[
+	} else {
+	    panic!("malformed PGN");
+	}
+    }
+
+    /// return the FEN representation of `self`
+    pub(crate) fn fen(&self) -> String {
+        todo!()
     }
 }

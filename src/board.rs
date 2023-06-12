@@ -1,17 +1,34 @@
-use std::{default, fmt::Display};
-
 use crate::{board::file::File, pgn::Move};
+use piece::Piece;
 
 mod display;
+mod file;
+mod index;
+mod piece;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PieceType {
-    King,
+    King {
+        can_castle_kingside: bool,
+        can_castle_queenside: bool,
+    },
     Queen,
-    Rook,
+    Rook {
+        has_moved: bool,
+    },
     Bishop,
     Knight,
     Pawn,
+}
+
+impl PieceType {
+    /// Returns `true` if the piece type is [`King`].
+    ///
+    /// [`King`]: PieceType::King
+    #[must_use]
+    pub fn is_king(&self) -> bool {
+        matches!(self, Self::King { .. })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,124 +55,71 @@ impl Color {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub enum Piece {
-    Some {
-        typ: PieceType,
-        color: Color,
-    },
-    #[default]
-    None,
-}
-
-impl Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Piece::Some { typ, color } => write!(
-                f,
-                "{}",
-                match (typ, color) {
-                    (PieceType::Bishop, Color::Black) => "♝",
-                    (PieceType::Knight, Color::Black) => "♞",
-                    (PieceType::Pawn, Color::Black) => "♟",
-                    (PieceType::Queen, Color::Black) => "♛",
-                    (PieceType::Rook, Color::Black) => "♜",
-                    (PieceType::King, Color::Black) => "♚",
-                    (PieceType::Bishop, Color::White) => "♗",
-                    (PieceType::Knight, Color::White) => "♘",
-                    (PieceType::Pawn, Color::White) => "♙",
-                    (PieceType::Queen, Color::White) => "♕",
-                    (PieceType::Rook, Color::White) => "♖",
-                    (PieceType::King, Color::White) => "♔",
-                }
-            ),
-            Piece::None => write!(f, " "),
-        }
-    }
-}
-
-mod file {
-    #[derive(Clone, Copy, Debug)]
-    #[repr(u8)]
-    pub enum File {
-        A = 0,
-        B = 1,
-        C = 2,
-        D = 3,
-        E = 4,
-        F = 5,
-        G = 6,
-        H = 7,
-    }
-
-    impl From<char> for File {
-        fn from(c: char) -> Self {
-            match c {
-                'a' => File::A,
-                'b' => File::B,
-                'c' => File::C,
-                'd' => File::D,
-                'e' => File::E,
-                'f' => File::F,
-                'g' => File::G,
-                'h' => File::H,
-                _ => unreachable!(),
-            }
-        }
-    }
-}
-
 /// construct a row of black pieces
 macro_rules! black {
-    ($($pt:ident $(,)*)*) => {
-	[$(Piece::Some { typ: PieceType::$pt, color: Color::Black },)*]
+    ($($pt:expr $(,)*)*) => {
+	[$(Piece::Some { typ: $pt, color: Color::Black },)*]
     }
 }
 
 /// construct a row of white pieces
 macro_rules! white {
-    ($($pt:ident $(,)*)*) => {
-	[$(Piece::Some { typ: PieceType::$pt, color: Color::White },)*]
+    ($($pt:expr $(,)*)*) => {
+	[$(Piece::Some { typ: $pt, color: Color::White },)*]
     }
 }
+
+type Square = (usize, usize);
 
 pub struct Board {
     board: [[Piece; 8]; 8],
-}
-
-mod index {
-    use super::{Board, Piece};
-    use std::ops::{Index, IndexMut};
-
-    impl Index<(usize, usize)> for Board {
-        type Output = Piece;
-
-        fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
-            &self.board[i][j]
-        }
-    }
-
-    impl IndexMut<(usize, usize)> for Board {
-        fn index_mut(&mut self, (i, j): (usize, usize)) -> &mut Self::Output {
-            &mut self.board[i][j]
-        }
-    }
+    half_move_clock: usize,
+    en_passant_target: Option<Square>,
 }
 
 impl Board {
     pub fn new() -> Self {
-        use Piece as P;
+        use piece::Piece as P;
+        use PieceType::*;
         let board = [
-            black![Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook],
+            black![
+                Rook { has_moved: false },
+                Knight,
+                Bishop,
+                Queen,
+                King {
+                    can_castle_queenside: true,
+                    can_castle_kingside: true
+                },
+                Bishop,
+                Knight,
+                Rook { has_moved: false }
+            ],
             black![Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn],
             [P::None; 8],
             [P::None; 8],
             [P::None; 8],
             [P::None; 8],
             white![Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn],
-            white![Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook],
+            white![
+                Rook { has_moved: false },
+                Knight,
+                Bishop,
+                Queen,
+                King {
+                    can_castle_queenside: true,
+                    can_castle_kingside: true
+                },
+                Bishop,
+                Knight,
+                Rook { has_moved: false }
+            ],
         ];
-        Self { board }
+        Self {
+            board,
+            half_move_clock: 0,
+            en_passant_target: None,
+        }
     }
 
     pub(crate) fn make_move(&mut self, m: &Move) {
@@ -224,7 +188,97 @@ impl Board {
     }
 
     /// return the FEN representation of `self`
-    pub(crate) fn fen(&self) -> String {
-        todo!()
+    pub(crate) fn fen(&self, half_move: usize) -> String {
+        let mut ret = String::new();
+        for (i, row) in self.board.iter().enumerate() {
+            let mut empty = 0;
+            for p in row {
+                if let Some(c) = p.to_char() {
+                    if empty != 0 {
+                        ret.push(char::from_digit(empty, 10).unwrap());
+                        empty = 0;
+                    }
+                    ret.push(c);
+                } else {
+                    empty += 1;
+                }
+            }
+            if empty != 0 {
+                ret.push(char::from_digit(empty, 10).unwrap());
+            }
+            if i < 7 {
+                ret.push('/');
+            } else {
+                ret.push(' ');
+            }
+        }
+        if (half_move & 1) == 0 {
+            ret.push('w');
+        } else {
+            ret.push('b');
+        }
+        ret.push(' ');
+
+        let white_castle = self.fen_castle_field(Color::White);
+        ret.push_str(&white_castle.to_ascii_uppercase());
+
+        let black_castle = self.fen_castle_field(Color::Black);
+        ret.push_str(&black_castle);
+
+        ret.push(' ');
+
+        if let Some(_s) = self.en_passant_target {
+            todo!();
+        } else {
+            ret.push_str("-");
+        }
+
+        ret.push(' ');
+        ret.push(char::from_digit(self.half_move_clock as u32, 10).unwrap());
+
+        ret.push(' ');
+        ret.push(char::from_digit((half_move / 2) as u32 + 1, 10).unwrap());
+        ret
+    }
+
+    /// locate the king of `col` and determine its castling rights
+    fn fen_castle_field(&self, col: Color) -> &str {
+        let white_king = self
+            .board
+            .iter()
+            .flatten()
+            .find(|p| match p {
+                Piece::Some { typ, color } => typ.is_king() && *color == col,
+                Piece::None => false,
+            })
+            .expect("have to have a king");
+        let Piece::Some { typ, .. } = white_king else {
+	            unreachable!()
+	        };
+        let PieceType::King { can_castle_kingside, can_castle_queenside } = typ else {
+	            unreachable!()
+	        };
+        let castle = match (can_castle_kingside, can_castle_queenside) {
+            (true, true) => "kq",
+            (true, false) => "k",
+            (false, true) => "q",
+            (false, false) => "",
+        };
+        castle
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fen_starting_position() {
+        let board = Board::new();
+        let got = board.fen(0);
+        let want = String::from(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        );
+        assert_eq!(got, want);
     }
 }

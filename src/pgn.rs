@@ -68,6 +68,6 @@ mod tests {
 
     #[test]
     fn test_load() {
-        dbg!(Pgn::load("testfiles/sample.pgn").unwrap());
+        Pgn::load("testfiles/sample.pgn").unwrap();
     }
 }

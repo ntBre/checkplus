@@ -19,8 +19,8 @@ fn main() {
 
     for (i, m) in pgn.moves.iter().enumerate() {
         board.make_move(m);
-        let fen = board.fen();
-        stockfish.set_position(fen);
+        let fen = board.fen(i);
+        stockfish.set_position(dbg!(fen));
         let score = stockfish.get_score(20);
         println!("{i} {score}");
     }

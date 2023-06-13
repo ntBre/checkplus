@@ -1,4 +1,5 @@
 use super::Board;
+use std::fmt::Debug;
 use std::fmt::Display;
 
 impl Display for Board {
@@ -10,5 +11,11 @@ impl Display for Board {
             writeln!(f)?;
         }
         Ok(())
+    }
+}
+
+impl Debug for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\n{self}")
     }
 }

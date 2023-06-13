@@ -137,57 +137,7 @@ impl Board {
         self.en_passant_target = None;
         let chars: Vec<_> = m.mov.chars().collect();
         match chars.len() {
-            2 => {
-                // forward pawn move
-                let file = File::from(chars[0]);
-                let rank = chars[1].to_digit(10).unwrap() - 1;
-                for i in 0..8 {
-                    for j in 0..8 {
-                        let p = self[(i, j)];
-                        let Piece::Some{ typ, color } = p else {
-			    continue;
-			};
-                        let start_square = (color.is_white() && i == 1)
-                            || (color.is_black() && i == 6);
-
-                        let op = if color.is_white() {
-                            std::ops::Add::add
-                        } else {
-                            std::ops::Sub::sub
-                        };
-
-                        // en passant rank operator
-                        let ep = if color.is_white() {
-                            std::ops::Sub::sub
-                        } else {
-                            std::ops::Add::add
-                        };
-
-                        // we know it's not a pawn capture, so the pawn must be
-                        // in the same file
-                        if file as usize == j
-                            && color == m.color
-                            && typ == PieceType::Pawn
-                        {
-                            let rank = rank as usize;
-                            let file = file as usize;
-                            // rank and file give the target square, ij give the
-                            // original
-                            if start_square && op(i, 2) == rank {
-                                self.en_passant_target =
-                                    Some((ep(rank + 1, 1), file));
-                                self[(rank, file)] =
-                                    std::mem::take(&mut self[(i, j)]);
-                                return;
-                            } else if op(i, 1) == rank {
-                                self[(rank, file)] =
-                                    std::mem::take(&mut self[(i, j)]);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
+            2 => self.forward_pawn_move(&chars, m).unwrap(),
             3 if m.mov.contains("-") => {
                 // short castle
             }
@@ -209,8 +159,60 @@ impl Board {
                 assert_eq!(m.mov, "O-O-O");
             }
             _ => unimplemented!(),
+        };
+    }
+
+    fn forward_pawn_move(
+        &mut self,
+        chars: &Vec<char>,
+        m: &Move,
+    ) -> Result<(), &str> {
+        let file = File::from(chars[0]);
+        let rank = chars[1].to_digit(10).unwrap() - 1;
+        for i in 0..8 {
+            for j in 0..8 {
+                let p = self[(i, j)];
+                let Piece::Some{ typ, color } = p else {
+			            continue;
+			        };
+                let start_square = (color.is_white() && i == 1)
+                    || (color.is_black() && i == 6);
+
+                let op = if color.is_white() {
+                    std::ops::Add::add
+                } else {
+                    std::ops::Sub::sub
+                };
+
+                // en passant rank operator
+                let ep = if color.is_white() {
+                    std::ops::Sub::sub
+                } else {
+                    std::ops::Add::add
+                };
+
+                // we know it's not a pawn capture, so the pawn must be
+                // in the same file
+                if file as usize == j
+                    && color == m.color
+                    && typ == PieceType::Pawn
+                {
+                    let rank = rank as usize;
+                    let file = file as usize;
+                    // rank and file give the target square, ij give the
+                    // original
+                    if start_square && op(i, 2) == rank {
+                        self.en_passant_target = Some((ep(rank + 1, 1), file));
+                        self[(rank, file)] = std::mem::take(&mut self[(i, j)]);
+                        return Ok(());
+                    } else if op(i, 1) == rank {
+                        self[(rank, file)] = std::mem::take(&mut self[(i, j)]);
+                        return Ok(());
+                    }
+                }
+            }
         }
-        todo!();
+        Err("expected to make a pawn move")
     }
 
     /// locate the king of `col` and determine its castling rights

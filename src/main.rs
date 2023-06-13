@@ -1,4 +1,4 @@
-#![feature(array_chunks)]
+#![feature(array_chunks, let_chains)]
 
 use crate::board::{Board, Color};
 use crate::pgn::Pgn;
@@ -18,17 +18,20 @@ fn main() {
     stockfish.receive("readyok");
 
     stockfish.set_position(dbg!(board.fen(0)));
-    let score = stockfish.get_score(20, Color::White);
+
+    let mut cur = &Color::White;
+    let score = stockfish.get_score(20, *cur);
     println!("0 {score}");
 
     let mut to_move = [Color::Black, Color::White].iter().cycle();
 
     for (i, m) in pgn.moves.iter().enumerate() {
         let i = i + 1;
-        board.make_move(m);
+        board.make_move(m, *cur);
+        cur = to_move.next().unwrap();
         let fen = board.fen(i);
         stockfish.set_position(dbg!(fen));
-        let score = stockfish.get_score(20, *to_move.next().unwrap());
+        let score = stockfish.get_score(20, *cur);
         println!("{i} {score}");
     }
 

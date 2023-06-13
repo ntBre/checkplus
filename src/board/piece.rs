@@ -1,6 +1,8 @@
 use crate::board::Color;
 use crate::board::PieceType;
 
+use super::Board;
+
 mod display;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -32,5 +34,52 @@ impl Piece {
             }
             Piece::None => None,
         }
+    }
+
+    pub fn can_move(
+        &self,
+        board: &mut Board,
+        from_rank: usize,
+        from_file: usize,
+        dest_rank: usize,
+        _dest_file: usize,
+        color: Color,
+    ) -> bool {
+        let Self::Some { typ, .. } = self else {
+	    return false;
+	};
+        match typ {
+            PieceType::King { .. } => todo!(),
+            PieceType::Queen => todo!(),
+            PieceType::Rook { .. } => todo!(),
+            PieceType::Bishop => todo!(),
+            PieceType::Knight => todo!(),
+            PieceType::Pawn => {
+                let start_square = (color.is_white() && from_rank == 1)
+                    || (color.is_black() && from_rank == 6);
+
+                let op = if color.is_white() {
+                    std::ops::Add::add
+                } else {
+                    std::ops::Sub::sub
+                };
+
+                // en passant rank operator
+                let ep = if color.is_white() {
+                    std::ops::Sub::sub
+                } else {
+                    std::ops::Add::add
+                };
+
+                if start_square && op(from_rank, 2) == dest_rank {
+                    board.en_passant_target =
+                        Some((ep(dest_rank + 1, 1), from_file));
+                    return true;
+                } else if op(from_rank, 1) == dest_rank {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }

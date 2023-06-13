@@ -1,8 +1,9 @@
-use crate::{board::file::File, pgn::Move};
 use piece::Piece;
 
+use crate::pgn::mov::Move;
+
 mod display;
-mod file;
+pub(crate) mod file;
 mod index;
 mod piece;
 
@@ -24,6 +25,13 @@ pub enum PieceType {
 impl From<char> for PieceType {
     fn from(c: char) -> Self {
         match c {
+            'K' => Self::King {
+                can_castle_kingside: true,
+                can_castle_queenside: true,
+            },
+            'Q' => Self::Queen,
+            'R' => Self::Rook { has_moved: false },
+            'B' => Self::Bishop,
             'N' => Self::Knight,
             _ => todo!(),
         }
@@ -37,6 +45,14 @@ impl PieceType {
     #[must_use]
     pub fn is_king(&self) -> bool {
         matches!(self, Self::King { .. })
+    }
+
+    /// Returns `true` if the piece type is [`Pawn`].
+    ///
+    /// [`Pawn`]: PieceType::Pawn
+    #[must_use]
+    pub fn is_pawn(&self) -> bool {
+        matches!(self, Self::Pawn)
     }
 }
 
@@ -78,7 +94,7 @@ macro_rules! white {
     }
 }
 
-type Square = (usize, usize);
+pub(crate) type Square = (usize, usize);
 
 pub struct Board {
     board: [[Piece; 8]; 8],
@@ -131,88 +147,53 @@ impl Board {
         }
     }
 
-    pub(crate) fn make_move(&mut self, m: &Move) {
-        // TODO factor this into Move itself. should parse into whatever I need
-        // here from the beginning
-        self.en_passant_target = None;
-        let chars: Vec<_> = m.mov.chars().collect();
-        match chars.len() {
-            2 => self.forward_pawn_move(&chars, m).unwrap(),
-            3 if m.mov.contains("-") => {
-                // short castle
-            }
-            3 => {
-                // regular piece move
-                let typ = PieceType::from(chars[0]);
-                let file = File::from(chars[1]);
-                let rank = chars[2].to_digit(10).unwrap() - 1;
-                dbg!(typ, file, rank);
-            }
-            4 if m.mov.contains("x") => {
-                // capture
-            }
-            4 => {
-                // disambiguating moves like Ref7
-            }
-            5 => {
-                // long castle
-                assert_eq!(m.mov, "O-O-O");
-            }
-            _ => unimplemented!(),
-        };
-    }
-
-    fn forward_pawn_move(
+    pub(crate) fn make_move(
         &mut self,
-        chars: &Vec<char>,
-        m: &Move,
-    ) -> Result<(), &str> {
-        let file = File::from(chars[0]);
-        let rank = chars[1].to_digit(10).unwrap() - 1;
-        for i in 0..8 {
-            for j in 0..8 {
-                let p = self[(i, j)];
+        Move {
+            typ: t,
+            from_rank,
+            from_file,
+            dest_rank,
+            dest_file,
+        }: &Move,
+        c: Color,
+    ) {
+        for rank in 0..8 {
+            for file in 0..8 {
+                let p = self[(rank, file)];
+                // skip empty square
                 let Piece::Some{ typ, color } = p else {
-			            continue;
-			        };
-                let start_square = (color.is_white() && i == 1)
-                    || (color.is_black() && i == 6);
-
-                let op = if color.is_white() {
-                    std::ops::Add::add
-                } else {
-                    std::ops::Sub::sub
-                };
-
-                // en passant rank operator
-                let ep = if color.is_white() {
-                    std::ops::Sub::sub
-                } else {
-                    std::ops::Add::add
-                };
-
-                // we know it's not a pawn capture, so the pawn must be
-                // in the same file
-                if file as usize == j
-                    && color == m.color
-                    && typ == PieceType::Pawn
-                {
-                    let rank = rank as usize;
-                    let file = file as usize;
-                    // rank and file give the target square, ij give the
-                    // original
-                    if start_square && op(i, 2) == rank {
-                        self.en_passant_target = Some((ep(rank + 1, 1), file));
-                        self[(rank, file)] = std::mem::take(&mut self[(i, j)]);
-                        return Ok(());
-                    } else if op(i, 1) == rank {
-                        self[(rank, file)] = std::mem::take(&mut self[(i, j)]);
-                        return Ok(());
-                    }
+		    continue;
+		};
+                // skip piece type or color mismatch
+                if typ != *t || color != c {
+                    continue;
+                }
+                // skip from square mismatch
+                if let Some(from_rank) = from_rank && *from_rank != rank {
+		    continue;
+		}
+                if let Some(from_file) = from_file && *from_file != file {
+		    continue;
+		}
+                // at this point we know the piece type, color, and possibly
+                // from_rank/from_file are correct, so we just have to verify
+                // that the piece on this square can make a legal move to
+                // (dest_file, dest_rank)
+                if p.can_move(
+                    self,
+                    rank,
+                    file,
+                    *dest_rank,
+                    *dest_file as usize,
+                    c,
+                ) {
+                    self[(*dest_rank, *dest_file as usize)] =
+                        std::mem::take(&mut self[(rank, file)]);
+                    return;
                 }
             }
         }
-        Err("expected to make a pawn move")
     }
 
     /// locate the king of `col` and determine its castling rights
@@ -309,6 +290,10 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use crate::pgn::mov::Move;
+
     use super::*;
 
     #[test]
@@ -324,7 +309,7 @@ mod tests {
     #[test]
     fn fen_e4() {
         let mut board = Board::new();
-        board.make_move(&Move::new("e4", Color::White));
+        board.make_move(&"e4".parse().unwrap(), Color::White);
         let got = board.fen(1);
         let want = String::from(
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
@@ -335,8 +320,8 @@ mod tests {
     #[test]
     fn fen_black_c5() {
         let mut board = Board::new();
-        board.make_move(&Move::new("e4", Color::White));
-        board.make_move(&Move::new("c5", Color::Black));
+        board.make_move(&Move::from_str("e4").unwrap(), Color::White);
+        board.make_move(&Move::from_str("c5").unwrap(), Color::Black);
         let got = board.fen(2);
         let want = String::from(
             "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",
@@ -347,9 +332,9 @@ mod tests {
     #[test]
     fn fen_2_nf3() {
         let mut board = Board::new();
-        board.make_move(&Move::new("e4", Color::White));
-        board.make_move(&Move::new("c5", Color::Black));
-        board.make_move(&Move::new("Nf3", Color::White));
+        board.make_move(&Move::from_str("e4").unwrap(), Color::White);
+        board.make_move(&Move::from_str("c5").unwrap(), Color::Black);
+        board.make_move(&Move::from_str("Nf3").unwrap(), Color::White);
         let got = board.fen(3);
         let want = String::from(
             "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",

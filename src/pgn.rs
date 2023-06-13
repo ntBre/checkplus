@@ -2,26 +2,14 @@ use std::{
     fs::File,
     io::{self, BufRead, BufReader},
     path::Path,
+    str::FromStr,
 };
 
-use crate::board::Color;
-
-#[derive(Debug)]
-pub struct Move {
-    pub(crate) mov: String,
-    pub(crate) color: Color,
-}
-
-impl Move {
-    pub fn new(mov: impl Into<String>, color: Color) -> Self {
-        let mov = mov.into().replace("+", "");
-        Self { mov, color }
-    }
-}
+pub mod mov;
 
 #[derive(Debug)]
 pub struct Pgn {
-    pub moves: Vec<Move>,
+    pub moves: Vec<mov::Move>,
     pub result: String,
 }
 
@@ -47,13 +35,13 @@ impl Pgn {
         let mut moves = Vec::new();
         while let Some([_, w, b]) = chunks.next() {
             moves.extend([
-                Move::new(w, Color::White),
-                Move::new(b, Color::Black),
+                mov::Move::from_str(w).unwrap(),
+                mov::Move::from_str(b).unwrap(),
             ]);
         }
         match chunks.remainder() {
             [_] => {}
-            [_, w] => moves.push(Move::new(w, Color::White)),
+            [_, w] => moves.push(mov::Move::from_str(w).unwrap()),
             // if there were 3, chunks would have gotten it, and I already
             // covered 1 and 2
             _ => unreachable!(),

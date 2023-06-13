@@ -24,12 +24,6 @@ mod from_str {
         type Err = ();
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
-            fn pawn_dest(chars: &[char]) -> (file::File, usize) {
-                (
-                    file::File::from(chars[0]),
-                    char::to_digit(chars[1], 10).unwrap() as usize - 1,
-                )
-            }
             let chars: Vec<_> = s.chars().collect();
             let typ = if !chars[0].is_ascii_uppercase() {
                 PieceType::Pawn
@@ -37,37 +31,64 @@ mod from_str {
                 PieceType::from(chars[0])
             };
 
-            if typ.is_pawn() {
-                if chars.len() == 2 {
-                    let (dest_file, dest_rank) = pawn_dest(&chars);
-                    return Ok(Self {
-                        typ,
-                        from_file: Some(dest_file as usize),
-                        from_rank: None,
-                        dest_file,
-                        dest_rank,
-                    });
-                } else if chars.len() == 4 {
-                    // split 'exf4' into 'e' and 'f4'
-                    let mut res = chars.split(|c| *c == 'x');
-                    let x = res.next().unwrap()[0];
-                    let from_file =
-                        Some(char::to_digit(x, 10).unwrap() as usize);
-                    let y = res.next().unwrap();
-                    let (dest_file, dest_rank) = pawn_dest(y);
-                    return Ok(Self {
-                        typ,
-                        from_rank: None,
-                        from_file,
-                        dest_rank,
-                        dest_file,
-                    });
-                } else {
-                    return Err(());
-                }
+            match typ {
+                PieceType::King { .. } => todo!(),
+                PieceType::Queen => todo!(),
+                PieceType::Rook { .. } => todo!(),
+                PieceType::Bishop => todo!(),
+                PieceType::Knight => knight_move(chars, typ),
+                PieceType::Pawn => pawn_move(chars, typ),
             }
-            Err(())
         }
+    }
+
+    fn knight_move(chars: Vec<char>, typ: PieceType) -> Result<Move, ()> {
+        if chars.len() == 3 {
+            let (dest_file, dest_rank) = pawn_dest(&chars[1..]);
+            return Ok(Move {
+                typ,
+                from_rank: None,
+                from_file: None,
+                dest_rank,
+                dest_file,
+            });
+        }
+        Err(())
+    }
+
+    fn pawn_dest(chars: &[char]) -> (file::File, usize) {
+        (
+            file::File::from(chars[0]),
+            char::to_digit(chars[1], 10).unwrap() as usize - 1,
+        )
+    }
+
+    fn pawn_move(chars: Vec<char>, typ: PieceType) -> Result<Move, ()> {
+        if chars.len() == 2 {
+            let (dest_file, dest_rank) = pawn_dest(&chars);
+            return Ok(Move {
+                typ,
+                from_file: Some(dest_file as usize),
+                from_rank: None,
+                dest_file,
+                dest_rank,
+            });
+        } else if chars.len() == 4 {
+            // split 'exf4' into 'e' and 'f4'
+            let mut res = chars.split(|c| *c == 'x');
+            let x = res.next().unwrap()[0];
+            let from_file = Some(char::to_digit(x, 10).unwrap() as usize);
+            let y = res.next().unwrap();
+            let (dest_file, dest_rank) = pawn_dest(y);
+            return Ok(Move {
+                typ,
+                from_rank: None,
+                from_file,
+                dest_rank,
+                dest_file,
+            });
+        }
+        return Err(());
     }
 
     #[cfg(test)]

@@ -6,6 +6,8 @@ use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
 
+use crate::board::Color;
+
 pub(crate) struct Stockfish {
     pub(crate) stdin: ChildStdin,
     pub(crate) stdout: BufReader<ChildStdout>,
@@ -53,8 +55,8 @@ impl Stockfish {
         self.send(format!("position fen {fen}"));
     }
 
-    /// score the current position to `depth`
-    pub(crate) fn get_score(&mut self, depth: usize) -> f64 {
+    /// score the current position to `depth` for the the player `to_move`
+    pub(crate) fn get_score(&mut self, depth: usize, to_move: Color) -> f64 {
         self.send(format!("go depth {}", depth));
         let output = self.receive("bestmove");
         let mut score = 0.0;
@@ -68,6 +70,11 @@ impl Stockfish {
                 }
             }
         }
+
+        if to_move.is_black() {
+            score *= -1.0;
+        }
+
         // stockfish reports the score as an integer in units of centipawns
         score / 100.0
     }

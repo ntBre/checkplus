@@ -213,13 +213,12 @@ impl Board {
         let PieceType::King { can_castle_kingside, can_castle_queenside } = typ else {
 	            unreachable!()
 	        };
-        let castle = match (can_castle_kingside, can_castle_queenside) {
+        match (can_castle_kingside, can_castle_queenside) {
             (true, true) => "kq",
             (true, false) => "k",
             (false, true) => "q",
             (false, false) => "",
-        };
-        castle
+        }
     }
 
     /// return the FEN representation of `self`
@@ -258,7 +257,7 @@ impl Board {
         ret.push_str(&white_castle.to_ascii_uppercase());
 
         let black_castle = self.fen_castle_field(Color::Black);
-        ret.push_str(&black_castle);
+        ret.push_str(black_castle);
 
         ret.push(' ');
 
@@ -276,7 +275,7 @@ impl Board {
             });
             ret.push(char::from_digit(rank as u32, 10).unwrap());
         } else {
-            ret.push_str("-");
+            ret.push('-');
         }
 
         ret.push(' ');

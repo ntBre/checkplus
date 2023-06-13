@@ -88,7 +88,7 @@ mod from_str {
                 dest_file,
             });
         }
-        return Err(());
+        Err(())
     }
 
     #[cfg(test)]

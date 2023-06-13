@@ -21,7 +21,7 @@ impl Pgn {
         for line in r
             .lines()
             .flatten()
-            .skip_while(|s| s.starts_with("[") || s.is_empty())
+            .skip_while(|s| s.starts_with('[') || s.is_empty())
         {
             for l in line.split_ascii_whitespace() {
                 moves.push(l.to_owned());
@@ -33,7 +33,7 @@ impl Pgn {
 
         let mut chunks = moves.array_chunks::<3>();
         let mut moves = Vec::new();
-        while let Some([_, w, b]) = chunks.next() {
+        for [_, w, b] in chunks.by_ref() {
             moves.extend([
                 mov::Move::from_str(w).unwrap(),
                 mov::Move::from_str(b).unwrap(),

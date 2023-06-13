@@ -16,7 +16,7 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub fn to_char(&self) -> Option<char> {
+    pub fn to_char(self) -> Option<char> {
         match self {
             Piece::Some { typ, color } => {
                 let c = match typ {

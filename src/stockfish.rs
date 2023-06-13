@@ -39,7 +39,7 @@ impl Stockfish {
     pub(crate) fn receive(&mut self, until: &'static str) -> String {
         let mut s = String::new();
         let mut buf = String::new();
-        while let Ok(_) = self.stdout.read_line(&mut buf) {
+        while self.stdout.read_line(&mut buf).is_ok() {
             s.push_str(&buf);
             s.push('\n');
             if buf.starts_with(until) {
@@ -47,7 +47,7 @@ impl Stockfish {
             }
             buf.clear();
         }
-        return s;
+        s
     }
 
     /// set stockfish's position
@@ -64,7 +64,7 @@ impl Stockfish {
             if line.starts_with("info") {
                 let mut sp = line.split_ascii_whitespace();
                 // not found on line saying NNUE is enabled
-                if let Some(_) = sp.position(|s| s == "cp") {
+                if sp.any(|s| s == "cp") {
                     let text = sp.next().unwrap();
                     score = text.parse::<f64>().unwrap();
                 }

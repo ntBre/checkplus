@@ -1,4 +1,7 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    fmt::Display,
+    ops::{Index, IndexMut},
+};
 
 use piece::Piece;
 
@@ -55,6 +58,15 @@ impl PieceType {
 pub enum Color {
     Black,
     White,
+}
+
+impl Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Color::Black => write!(f, "B"),
+            Color::White => write!(f, "W"),
+        }
+    }
 }
 
 impl Color {

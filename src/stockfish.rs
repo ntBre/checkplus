@@ -80,7 +80,7 @@ impl Stockfish {
     }
 
     /// set stockfish's position to `fen`
-    pub(crate) fn set_position(&mut self, fen: impl Display) {
+    pub(crate) fn set_position(&mut self, fen: &impl Display) {
         self.send(format!("position fen {fen}"));
     }
 

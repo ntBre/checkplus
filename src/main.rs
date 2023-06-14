@@ -1,4 +1,6 @@
-#![feature(array_chunks, let_chains)]
+#![feature(array_chunks, let_chains, lazy_cell)]
+
+use std::sync::LazyLock;
 
 use clap::{arg, value_parser, Command};
 
@@ -31,6 +33,9 @@ impl Args {
     }
 }
 
+static DEBUG: LazyLock<bool> =
+    LazyLock::new(|| std::env::var("CHECK_PLUS_DEBUG").is_ok());
+
 fn main() {
     let args = Args::new();
 
@@ -53,8 +58,13 @@ fn main() {
         board.make_move(m, *cur);
         cur = to_move.next().unwrap();
         let fen = board.fen(i);
-        stockfish.set_position(fen);
+        stockfish.set_position(&fen);
         let score = stockfish.get_score(args.depth, *cur);
-        println!("{i} {score:.2}");
+        print!("{i} {score:.2}");
+        if *DEBUG {
+            println!(" {fen}");
+        } else {
+            println!();
+        }
     }
 }

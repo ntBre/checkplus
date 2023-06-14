@@ -51,17 +51,121 @@ impl Piece {
         from_file: usize,
         dest_rank: usize,
         dest_file: usize,
-        color: Color,
     ) -> bool {
         board.en_passant_target = None;
-        let Self::Some { typ, .. } = self else {
+        let Self::Some { typ, color} = self else {
 	    return false;
 	};
         match typ {
-            PieceType::King { .. } => todo!(),
-            PieceType::Queen => todo!(),
-            PieceType::Rook { .. } => todo!(),
-            PieceType::Bishop => todo!(),
+            PieceType::King => {
+                match color {
+                    Color::Black => {
+                        board.black_can_castle_kingside = false;
+                        board.black_can_castle_queenside = false;
+                    }
+                    Color::White => {
+                        board.white_can_castle_kingside = false;
+                        board.white_can_castle_queenside = false;
+                    }
+                };
+                if from_rank + 1 == dest_rank && from_file + 1 == dest_file {
+                    return true;
+                }
+                if from_rank + 1 == dest_rank && from_file + 0 == dest_file {
+                    return true;
+                }
+                if from_rank + 1 == dest_rank && from_file - 1 == dest_file {
+                    return true;
+                }
+                if from_rank - 1 == dest_rank && from_file + 1 == dest_file {
+                    return true;
+                }
+                if from_rank - 1 == dest_rank && from_file + 0 == dest_file {
+                    return true;
+                }
+                if from_rank - 1 == dest_rank && from_file - 1 == dest_file {
+                    return true;
+                }
+                if from_rank + 0 == dest_rank && from_file + 1 == dest_file {
+                    return true;
+                }
+                if from_rank + 0 == dest_rank && from_file - 1 == dest_file {
+                    return true;
+                }
+            }
+            PieceType::Queen => {
+                let bishop = Self::Some {
+                    typ: PieceType::Bishop,
+                    color: *color,
+                };
+                let rook = Self::Some {
+                    typ: PieceType::Rook,
+                    color: *color,
+                };
+                return bishop.can_move(
+                    board, from_rank, from_file, dest_rank, dest_file,
+                ) || rook.can_move(
+                    board, from_rank, from_file, dest_rank, dest_file,
+                );
+            }
+            PieceType::Rook => {
+                use crate::board::Coord::*;
+                // it's okay to set these again if the rook happens to return to
+                // its starting square. *_can_castle_* start off true and will
+                // never be set back to true once they've been set to false
+                match color {
+                    Color::Black => match (from_file, from_rank).into() {
+                        A8 => board.black_can_castle_queenside = false,
+                        H8 => board.black_can_castle_kingside = false,
+                        _ => {}
+                    },
+                    Color::White => match (from_file, from_rank).into() {
+                        A1 => board.white_can_castle_queenside = false,
+                        H1 => board.white_can_castle_kingside = false,
+                        _ => {}
+                    },
+                }
+                // cast as isize to prevent underflow
+                let from_rank = from_rank as isize;
+                let dest_rank = dest_rank as isize;
+                let from_file = from_file as isize;
+                let dest_file = dest_file as isize;
+                for i in 0..8 {
+                    if from_rank + i == dest_rank || from_rank - i == dest_rank
+                    {
+                        return true;
+                    }
+                    if from_file + i == dest_file || from_file - i == dest_file
+                    {
+                        return true;
+                    }
+                }
+            }
+            PieceType::Bishop => {
+                // cast as isize to prevent underflow
+                let from_rank = from_rank as isize;
+                let dest_rank = dest_rank as isize;
+                let from_file = from_file as isize;
+                let dest_file = dest_file as isize;
+                for i in 0..8 {
+                    if from_rank + i == dest_rank && from_file + i == dest_file
+                    {
+                        return true;
+                    }
+                    if from_rank + i == dest_rank && from_file - i == dest_file
+                    {
+                        return true;
+                    }
+                    if from_rank - i == dest_rank && from_file + i == dest_file
+                    {
+                        return true;
+                    }
+                    if from_rank - i == dest_rank && from_file - i == dest_file
+                    {
+                        return true;
+                    }
+                }
+            }
             PieceType::Knight => {
                 // cast as isize to prevent underflow
                 let from_rank = from_rank as isize;
@@ -111,8 +215,10 @@ impl Piece {
                 };
 
                 if start_square && op(from_rank, 2) == dest_rank {
-                    board.en_passant_target =
-                        Some((ep(dest_rank + 1, 1), from_file));
+                    board.en_passant_target = Some((
+                        ep(dest_rank + 1, 1) as usize,
+                        from_file as usize,
+                    ));
                     return true;
                 } else if op(from_rank, 1) == dest_rank {
                     return true;

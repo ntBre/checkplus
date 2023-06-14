@@ -12,14 +12,9 @@ mod piece;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PieceType {
-    King {
-        can_castle_kingside: bool,
-        can_castle_queenside: bool,
-    },
+    King,
     Queen,
-    Rook {
-        has_moved: bool,
-    },
+    Rook,
     Bishop,
     Knight,
     Pawn,
@@ -28,12 +23,9 @@ pub enum PieceType {
 impl From<char> for PieceType {
     fn from(c: char) -> Self {
         match c {
-            'K' | 'O' => Self::King {
-                can_castle_kingside: true,
-                can_castle_queenside: true,
-            },
+            'K' | 'O' => Self::King,
             'Q' => Self::Queen,
-            'R' => Self::Rook { has_moved: false },
+            'R' => Self::Rook,
             'B' => Self::Bishop,
             'N' => Self::Knight,
             _ => todo!("what is this? {c}"),
@@ -103,6 +95,10 @@ pub struct Board {
     board: [[Piece; 8]; 8],
     half_move_clock: usize,
     en_passant_target: Option<Square>,
+    white_can_castle_kingside: bool,
+    white_can_castle_queenside: bool,
+    black_can_castle_kingside: bool,
+    black_can_castle_queenside: bool,
 }
 
 impl Default for Board {
@@ -116,43 +112,23 @@ impl Board {
         use piece::Piece as P;
         use PieceType::*;
         let board = [
-            black![
-                Rook { has_moved: false },
-                Knight,
-                Bishop,
-                Queen,
-                King {
-                    can_castle_queenside: true,
-                    can_castle_kingside: true
-                },
-                Bishop,
-                Knight,
-                Rook { has_moved: false }
-            ],
+            black![Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook],
             black![Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn],
             [P::None; 8],
             [P::None; 8],
             [P::None; 8],
             [P::None; 8],
             white![Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn],
-            white![
-                Rook { has_moved: false },
-                Knight,
-                Bishop,
-                Queen,
-                King {
-                    can_castle_queenside: true,
-                    can_castle_kingside: true
-                },
-                Bishop,
-                Knight,
-                Rook { has_moved: false }
-            ],
+            white![Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook],
         ];
         Self {
             board,
             half_move_clock: 0,
             en_passant_target: None,
+            white_can_castle_kingside: true,
+            white_can_castle_queenside: true,
+            black_can_castle_kingside: true,
+            black_can_castle_queenside: true,
         }
     }
 
@@ -174,10 +150,14 @@ impl Board {
                     Color::Black => {
                         self.swap(E8, G8); // King
                         self.swap(H8, F8); // Rook
+                        self.black_can_castle_kingside = false;
+                        self.black_can_castle_queenside = false;
                     }
                     Color::White => {
                         self.swap(E1, G1); // King
                         self.swap(H1, F1); // Rook
+                        self.white_can_castle_kingside = false;
+                        self.white_can_castle_queenside = false;
                     }
                 }
             }
@@ -187,10 +167,14 @@ impl Board {
                     Color::Black => {
                         self.swap(E8, C8); // King
                         self.swap(A8, D8); // Rook
+                        self.black_can_castle_kingside = false;
+                        self.black_can_castle_queenside = false;
                     }
                     Color::White => {
                         self.swap(E1, C1); // King
                         self.swap(A1, D1); // Rook
+                        self.white_can_castle_kingside = false;
+                        self.white_can_castle_queenside = false;
                     }
                 }
             }
@@ -229,7 +213,6 @@ impl Board {
                             file,
                             *dest_rank,
                             *dest_file as usize,
-                            c,
                         ) {
                             // destination is occupied => capture; pawn move is
                             // always an advance or capture
@@ -253,28 +236,21 @@ impl Board {
     }
 
     /// locate the king of `col` and determine its castling rights
-    fn fen_castle_field(&self, col: Color) -> &str {
-        let white_king = self
-            .board
-            .iter()
-            .flatten()
-            .find(|p| match p {
-                Piece::Some { typ, color } => typ.is_king() && *color == col,
-                Piece::None => false,
-            })
-            .expect("have to have a king");
-        let Piece::Some { typ, .. } = white_king else {
-	            unreachable!()
-	        };
-        let PieceType::King { can_castle_kingside, can_castle_queenside } = typ else {
-	            unreachable!()
-	        };
-        match (can_castle_kingside, can_castle_queenside) {
-            (true, true) => "kq",
-            (true, false) => "k",
-            (false, true) => "q",
-            (false, false) => "",
+    fn fen_castle_field(&self) -> String {
+        let mut ret = String::new();
+        if self.white_can_castle_kingside {
+            ret.push('K')
         }
+        if self.white_can_castle_queenside {
+            ret.push('Q')
+        }
+        if self.black_can_castle_kingside {
+            ret.push('k')
+        }
+        if self.black_can_castle_queenside {
+            ret.push('q')
+        }
+        ret
     }
 
     /// return the FEN representation of `self`
@@ -309,11 +285,7 @@ impl Board {
         }
         ret.push(' ');
 
-        let white_castle = self.fen_castle_field(Color::White);
-        ret.push_str(&white_castle.to_ascii_uppercase());
-
-        let black_castle = self.fen_castle_field(Color::Black);
-        ret.push_str(black_castle);
+        ret.push_str(&self.fen_castle_field());
 
         ret.push(' ');
 
@@ -338,7 +310,8 @@ impl Board {
         ret.push(char::from_digit(self.half_move_clock as u32, 10).unwrap());
 
         ret.push(' ');
-        ret.push(char::from_digit((half_move / 2) as u32 + 1, 10).unwrap());
+        use std::fmt::Write;
+        write!(ret, "{}", half_move / 2 + 1).unwrap();
         ret
     }
 }

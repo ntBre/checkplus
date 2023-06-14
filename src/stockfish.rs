@@ -1,14 +1,15 @@
 use std::fmt::Display;
 use std::io::BufReader;
 use std::io::{BufRead, Write};
-use std::process::ChildStdin;
 use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
+use std::process::{Child, ChildStdin};
 
 use crate::board::Color;
 
 pub(crate) struct Stockfish {
+    child: Child,
     pub(crate) stdin: ChildStdin,
     pub(crate) stdout: BufReader<ChildStdout>,
 }
@@ -23,7 +24,11 @@ impl Stockfish {
             .unwrap();
         let stdin = child.stdin.take().unwrap();
         let stdout = BufReader::new(child.stdout.take().unwrap());
-        Self { stdin, stdout }
+        Self {
+            child,
+            stdin,
+            stdout,
+        }
     }
 
     /// write `cmd` to stockfish's stdin
@@ -46,6 +51,13 @@ impl Stockfish {
                 break;
             }
             buf.clear();
+            match self.child.try_wait() {
+                Ok(None) => {}
+                Ok(Some(status)) => {
+                    panic!("stockfish exited with {status}");
+                }
+                Err(e) => panic!("failed to get status with `{e}`"),
+            }
         }
         s
     }

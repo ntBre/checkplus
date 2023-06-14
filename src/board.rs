@@ -265,6 +265,9 @@ impl Board {
         if self.black_can_castle_queenside {
             ret.push('q')
         }
+        if ret.is_empty() {
+            ret.push('-')
+        }
         ret
     }
 

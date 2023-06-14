@@ -66,8 +66,6 @@ fn samples() {
             1,
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
         ),
-        // TODO this is the issue! I'm not checking that the path is empty for
-        // bishop or rook moves and I move the wrong rook here
         Test::new(
             11,
             "r1bqk2r/1pppbppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQR1K1 b kq - 5 6",

@@ -246,6 +246,7 @@ impl Board {
                         }
                     }
                 }
+                panic!("illegal move for {c}?: {m:?} on board:\n{self}");
             }
         }
     }

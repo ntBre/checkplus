@@ -125,46 +125,82 @@ impl Piece {
                         _ => {}
                     },
                 }
-                // cast as isize to prevent underflow
-                let from_rank = from_rank as isize;
-                let dest_rank = dest_rank as isize;
-                let from_file = from_file as isize;
-                let dest_file = dest_file as isize;
-                for i in 0..8 {
-                    if from_rank + i == dest_rank || from_rank - i == dest_rank
-                    {
-                        return true;
+                if from_rank == dest_rank {
+                    let (beg, end) =
+                        (from_file.min(dest_file), from_file.max(dest_file));
+                    for file in beg + 1..end {
+                        if board[(from_rank, file)].is_some() {
+                            return false;
+                        }
                     }
-                    if from_file + i == dest_file || from_file - i == dest_file
-                    {
-                        return true;
+                } else if from_file == dest_file {
+                    let (beg, end) =
+                        (from_rank.min(dest_rank), from_rank.max(dest_rank));
+                    for rank in beg + 1..end {
+                        if board[(rank, from_file)].is_some() {
+                            return false;
+                        }
                     }
+                } else {
+                    return false;
                 }
+                return true;
             }
             PieceType::Bishop => {
-                // cast as isize to prevent underflow
-                let from_rank = from_rank as isize;
-                let dest_rank = dest_rank as isize;
-                let from_file = from_file as isize;
-                let dest_file = dest_file as isize;
-                for i in 0..8 {
-                    if from_rank + i == dest_rank && from_file + i == dest_file
+                {
+                    // cast as isize to prevent underflow
+                    let from_rank = from_rank as isize;
+                    let dest_rank = dest_rank as isize;
+                    let from_file = from_file as isize;
+                    let dest_file = dest_file as isize;
+                    if (dest_rank - from_rank).abs()
+                        != (dest_file - from_file).abs()
                     {
-                        return true;
-                    }
-                    if from_rank + i == dest_rank && from_file - i == dest_file
-                    {
-                        return true;
-                    }
-                    if from_rank - i == dest_rank && from_file + i == dest_file
-                    {
-                        return true;
-                    }
-                    if from_rank - i == dest_rank && from_file - i == dest_file
-                    {
-                        return true;
+                        return false;
                     }
                 }
+                match (dest_file > from_file, dest_rank > from_rank) {
+                    (true, true) => {
+                        let end = dest_file - from_file;
+                        for i in 1..end {
+                            if board[(from_rank + i, from_file + i)].is_some() {
+                                return false;
+                            }
+                        }
+                        return from_rank + end == dest_rank
+                            && from_file + end == dest_file;
+                    }
+                    (true, false) => {
+                        let end = dest_file - from_file;
+                        for i in 1..end {
+                            if board[(from_rank - i, from_file + i)].is_some() {
+                                return false;
+                            }
+                        }
+                        return from_rank - end == dest_rank
+                            && from_file + end == dest_file;
+                    }
+                    (false, true) => {
+                        let end = dest_rank - from_rank;
+                        for i in 1..end {
+                            if board[(from_rank + i, from_file - i)].is_some() {
+                                return false;
+                            }
+                        }
+                        return from_rank + end == dest_rank
+                            && from_file - end == dest_file;
+                    }
+                    (false, false) => {
+                        let end = from_file - dest_file;
+                        for i in 1..end {
+                            if board[(from_rank - i, from_file - i)].is_some() {
+                                return false;
+                            }
+                        }
+                        return from_rank - end == dest_rank
+                            && from_file - end == dest_file;
+                    }
+                };
             }
             PieceType::Knight => {
                 // cast as isize to prevent underflow

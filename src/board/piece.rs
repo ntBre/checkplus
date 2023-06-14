@@ -71,7 +71,7 @@ impl Piece {
                 if from_rank + 1 == dest_rank && from_file + 1 == dest_file {
                     return true;
                 }
-                if from_rank + 1 == dest_rank && from_file + 0 == dest_file {
+                if from_rank + 1 == dest_rank && from_file == dest_file {
                     return true;
                 }
                 if from_rank + 1 == dest_rank && from_file - 1 == dest_file {
@@ -80,16 +80,16 @@ impl Piece {
                 if from_rank - 1 == dest_rank && from_file + 1 == dest_file {
                     return true;
                 }
-                if from_rank - 1 == dest_rank && from_file + 0 == dest_file {
+                if from_rank - 1 == dest_rank && from_file == dest_file {
                     return true;
                 }
                 if from_rank - 1 == dest_rank && from_file - 1 == dest_file {
                     return true;
                 }
-                if from_rank + 0 == dest_rank && from_file + 1 == dest_file {
+                if from_rank == dest_rank && from_file + 1 == dest_file {
                     return true;
                 }
-                if from_rank + 0 == dest_rank && from_file - 1 == dest_file {
+                if from_rank == dest_rank && from_file - 1 == dest_file {
                     return true;
                 }
             }
@@ -215,10 +215,8 @@ impl Piece {
                 };
 
                 if start_square && op(from_rank, 2) == dest_rank {
-                    board.en_passant_target = Some((
-                        ep(dest_rank + 1, 1) as usize,
-                        from_file as usize,
-                    ));
+                    board.en_passant_target =
+                        Some((ep(dest_rank + 1, 1), from_file));
                     return true;
                 } else if op(from_rank, 1) == dest_rank {
                     return true;

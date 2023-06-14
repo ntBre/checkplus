@@ -11,18 +11,26 @@ pub enum File {
     H = 7,
 }
 
-impl From<char> for File {
-    fn from(c: char) -> Self {
+impl File {
+    pub fn from_unchecked(value: char) -> Self {
+        Self::try_from(value).unwrap()
+    }
+}
+
+impl TryFrom<char> for File {
+    type Error = ();
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
-            'a' => File::A,
-            'b' => File::B,
-            'c' => File::C,
-            'd' => File::D,
-            'e' => File::E,
-            'f' => File::F,
-            'g' => File::G,
-            'h' => File::H,
-            _ => unreachable!(),
+            'a' => Ok(File::A),
+            'b' => Ok(File::B),
+            'c' => Ok(File::C),
+            'd' => Ok(File::D),
+            'e' => Ok(File::E),
+            'f' => Ok(File::F),
+            'g' => Ok(File::G),
+            'h' => Ok(File::H),
+            _ => Err(()),
         }
     }
 }

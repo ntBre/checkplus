@@ -4,7 +4,7 @@ use crate::board::{Board, Color};
 use crate::pgn::Pgn;
 use crate::stockfish::Stockfish;
 
-mod board;
+pub mod board;
 mod pgn;
 mod stockfish;
 

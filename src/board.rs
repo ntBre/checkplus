@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use piece::Piece;
 
 use crate::pgn::mov::Move;
@@ -5,6 +7,7 @@ use crate::pgn::mov::Move;
 mod display;
 pub(crate) mod file;
 mod index;
+pub use index::Coord;
 mod piece;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -25,7 +28,7 @@ pub enum PieceType {
 impl From<char> for PieceType {
     fn from(c: char) -> Self {
         match c {
-            'K' => Self::King {
+            'K' | 'O' => Self::King {
                 can_castle_kingside: true,
                 can_castle_queenside: true,
             },
@@ -33,7 +36,7 @@ impl From<char> for PieceType {
             'R' => Self::Rook { has_moved: false },
             'B' => Self::Bishop,
             'N' => Self::Knight,
-            _ => todo!(),
+            _ => todo!("what is this? {c}"),
         }
     }
 }
@@ -102,6 +105,12 @@ pub struct Board {
     en_passant_target: Option<Square>,
 }
 
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         use piece::Piece as P;
@@ -147,59 +156,97 @@ impl Board {
         }
     }
 
-    pub(crate) fn make_move(
-        &mut self,
-        Move {
-            typ: t,
-            from_rank,
-            from_file,
-            dest_rank,
-            dest_file,
-        }: &Move,
-        c: Color,
-    ) {
-        for rank in 0..8 {
-            for file in 0..8 {
-                let p = self[(rank, file)];
-                // skip empty square
-                let Piece::Some{ typ, color } = p else {
-		    continue;
-		};
-                // skip piece type or color mismatch
-                if typ != *t || color != c {
-                    continue;
-                }
-                // skip from square mismatch
-                if let Some(from_rank) = from_rank && *from_rank != rank {
-		    continue;
-		}
-                if let Some(from_file) = from_file && *from_file != file {
-		    continue;
-		}
-                // at this point we know the piece type, color, and possibly
-                // from_rank/from_file are correct, so we just have to verify
-                // that the piece on this square can make a legal move to
-                // (dest_file, dest_rank)
-                if p.can_move(
-                    self,
-                    rank,
-                    file,
-                    *dest_rank,
-                    *dest_file as usize,
-                    c,
-                ) {
-                    // destination is occupied => capture; pawn move is always
-                    // an advance or capture
-                    if self[(*dest_rank, *dest_file as usize)].is_some()
-                        || typ.is_pawn()
-                    {
-                        self.half_move_clock = 0;
-                    } else {
-                        self.half_move_clock += 1;
+    /// move the piece in the square `from` to `to`, leaving `self[to]` empty
+    fn swap<T>(&mut self, from: T, to: T)
+    where
+        Self: Index<T> + IndexMut<T>,
+        <Self as Index<T>>::Output: Default,
+    {
+        self[to] = std::mem::take(&mut self[from]);
+    }
+
+    pub(crate) fn make_move(&mut self, m: &Move, c: Color) {
+        use Coord::*;
+        match m {
+            Move::KingCastle => {
+                self.half_move_clock += 1;
+                match c {
+                    Color::Black => {
+                        self.swap(E8, G8); // King
+                        self.swap(H8, F8); // Rook
                     }
-                    self[(*dest_rank, *dest_file as usize)] =
-                        std::mem::take(&mut self[(rank, file)]);
-                    return;
+                    Color::White => {
+                        self.swap(E1, G1); // King
+                        self.swap(H1, F1); // Rook
+                    }
+                }
+            }
+            Move::QueenCastle => {
+                self.half_move_clock += 1;
+                match c {
+                    Color::Black => {
+                        self.swap(E8, C8); // King
+                        self.swap(A8, D8); // Rook
+                    }
+                    Color::White => {
+                        self.swap(E1, C1); // King
+                        self.swap(A1, D1); // Rook
+                    }
+                }
+            }
+            Move::Normal {
+                typ: t,
+                from_rank,
+                from_file,
+                dest_rank,
+                dest_file,
+            } => {
+                for rank in 0..8 {
+                    for file in 0..8 {
+                        let p = self[(rank, file)];
+                        // skip empty square
+                        let Piece::Some{ typ, color } = p else {
+			    continue;
+			};
+                        // skip piece type or color mismatch
+                        if typ != *t || color != c {
+                            continue;
+                        }
+                        // skip from square mismatch
+                        if let Some(fr) = from_rank && *fr != rank {
+			    continue;
+			}
+                        if let Some(ff) = from_file && *ff != file {
+			    continue;
+			}
+                        // at this point we know the piece type, color, and
+                        // possibly from_rank/from_file are correct, so we just
+                        // have to verify that the piece on this square can make
+                        // a legal move to (dest_file, dest_rank)
+                        if p.can_move(
+                            self,
+                            rank,
+                            file,
+                            *dest_rank,
+                            *dest_file as usize,
+                            c,
+                        ) {
+                            // destination is occupied => capture; pawn move is
+                            // always an advance or capture
+                            if self[(*dest_rank, *dest_file as usize)].is_some()
+                                || typ.is_pawn()
+                            {
+                                self.half_move_clock = 0;
+                            } else {
+                                self.half_move_clock += 1;
+                            }
+                            self.swap(
+                                (rank, file),
+                                (*dest_rank, *dest_file as usize),
+                            );
+                            return;
+                        }
+                    }
                 }
             }
         }

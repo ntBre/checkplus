@@ -188,6 +188,15 @@ impl Board {
                     *dest_file as usize,
                     c,
                 ) {
+                    // destination is occupied => capture; pawn move is always
+                    // an advance or capture
+                    if self[(*dest_rank, *dest_file as usize)].is_some()
+                        || typ.is_pawn()
+                    {
+                        self.half_move_clock = 0;
+                    } else {
+                        self.half_move_clock += 1;
+                    }
                     self[(*dest_rank, *dest_file as usize)] =
                         std::mem::take(&mut self[(rank, file)]);
                     return;

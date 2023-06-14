@@ -16,6 +16,14 @@ pub enum Piece {
 }
 
 impl Piece {
+    /// Returns `true` if the piece is [`Some`].
+    ///
+    /// [`Some`]: Piece::Some
+    #[must_use]
+    pub fn is_some(&self) -> bool {
+        matches!(self, Self::Some { .. })
+    }
+
     pub fn to_char(self) -> Option<char> {
         match self {
             Piece::Some { typ, color } => {
@@ -42,9 +50,10 @@ impl Piece {
         from_rank: usize,
         from_file: usize,
         dest_rank: usize,
-        _dest_file: usize,
+        dest_file: usize,
         color: Color,
     ) -> bool {
+        board.en_passant_target = None;
         let Self::Some { typ, .. } = self else {
 	    return false;
 	};
@@ -53,7 +62,37 @@ impl Piece {
             PieceType::Queen => todo!(),
             PieceType::Rook { .. } => todo!(),
             PieceType::Bishop => todo!(),
-            PieceType::Knight => todo!(),
+            PieceType::Knight => {
+                let from_rank = from_rank as isize;
+                let dest_rank = dest_rank as isize;
+                let from_file = from_file as isize;
+                let dest_file = dest_file as isize;
+                //
+                if from_rank + 2 == dest_rank && from_file + 1 == dest_file {
+                    return true;
+                }
+                if from_rank + 1 == dest_rank && from_file + 2 == dest_file {
+                    return true;
+                }
+                if from_rank - 2 == dest_rank && from_file + 1 == dest_file {
+                    return true;
+                }
+                if from_rank - 1 == dest_rank && from_file + 2 == dest_file {
+                    return true;
+                }
+                if from_rank + 2 == dest_rank && from_file - 1 == dest_file {
+                    return true;
+                }
+                if from_rank + 1 == dest_rank && from_file - 2 == dest_file {
+                    return true;
+                }
+                if from_rank - 2 == dest_rank && from_file - 1 == dest_file {
+                    return true;
+                }
+                if from_rank - 1 == dest_rank && from_file - 2 == dest_file {
+                    return true;
+                }
+            }
             PieceType::Pawn => {
                 let start_square = (color.is_white() && from_rank == 1)
                     || (color.is_black() && from_rank == 6);

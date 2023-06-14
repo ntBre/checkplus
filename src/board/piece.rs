@@ -63,11 +63,11 @@ impl Piece {
             PieceType::Rook { .. } => todo!(),
             PieceType::Bishop => todo!(),
             PieceType::Knight => {
+                // cast as isize to prevent underflow
                 let from_rank = from_rank as isize;
                 let dest_rank = dest_rank as isize;
                 let from_file = from_file as isize;
                 let dest_file = dest_file as isize;
-                //
                 if from_rank + 2 == dest_rank && from_file + 1 == dest_file {
                     return true;
                 }

@@ -39,10 +39,8 @@ fn main() {
 
     let mut stockfish = Stockfish::new();
 
-    stockfish.send("isready");
-    stockfish.receive("readyok");
-
-    stockfish.set_position(board.fen(0));
+    stockfish.new_game();
+    stockfish.start_position();
 
     let mut cur = &Color::White;
     let score = stockfish.get_score(args.depth, *cur);

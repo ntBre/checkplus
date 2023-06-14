@@ -62,7 +62,24 @@ impl Stockfish {
         s
     }
 
-    /// set stockfish's position
+    /// send `ucinewgame` followd by `isready` to prepare the engine for a
+    /// position from a new game
+    pub(crate) fn new_game(&mut self) {
+        self.send("ucinewgame");
+        self.is_ready();
+    }
+
+    pub(crate) fn is_ready(&mut self) {
+        self.send("isready");
+        self.receive("readyok");
+    }
+
+    pub(crate) fn start_position(&mut self) {
+        self.send("position startpos");
+        self.is_ready();
+    }
+
+    /// set stockfish's position to `fen`
     pub(crate) fn set_position(&mut self, fen: impl Display) {
         self.send(format!("position fen {fen}"));
     }

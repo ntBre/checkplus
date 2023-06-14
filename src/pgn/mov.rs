@@ -78,14 +78,27 @@ mod from_str {
             let from_file = if let Ok(file) = File::try_from(chars[1]) {
                 Some(file as usize)
             } else {
+                // capture
                 None
             };
+            // disambiguating rank, eg N2f4
             let from_rank = char::to_digit(chars[1], 10).map(|r| r as usize);
             let (dest_file, dest_rank) = pawn_dest(&chars[2..]);
             return Ok(Move::Normal {
                 typ,
                 from_rank,
                 from_file,
+                dest_rank,
+                dest_file,
+            });
+        } else if chars.len() == 5 {
+            // both a rank and a capture, eg Ng6f4
+            let (f, r) = pawn_dest(&chars[1..]);
+            let (dest_file, dest_rank) = pawn_dest(&chars[3..]);
+            return Ok(Move::Normal {
+                typ,
+                from_rank: Some(r),
+                from_file: Some(f as usize),
                 dest_rank,
                 dest_file,
             });
@@ -159,6 +172,19 @@ mod from_str {
                 from_file: Some(2),
                 dest_rank: 4,
                 dest_file: File::C,
+            };
+            assert_eq!(got, want);
+        }
+
+        #[test]
+        fn disambiguation() {
+            let got = Move::from_str("Ng6f4").unwrap();
+            let want = Move::Normal {
+                typ: Knight,
+                from_rank: Some(5),
+                from_file: Some(6),
+                dest_rank: 3,
+                dest_file: File::F,
             };
             assert_eq!(got, want);
         }

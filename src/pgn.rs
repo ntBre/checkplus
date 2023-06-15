@@ -85,7 +85,7 @@ impl Pgn {
         let mut state = Tags;
         for line in r.lines().flatten() {
             if line.starts_with('[') {
-                let line = line.replace('[', "").replace(']', "");
+                let line = line.replace(['[', ']'], "");
                 let sp: Vec<_> = line.split_ascii_whitespace().collect();
                 tags.insert(sp[0].to_owned(), sp[1..].join(" ").to_owned());
             } else if state.is_tags() && line.is_empty() {

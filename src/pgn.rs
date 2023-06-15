@@ -61,6 +61,7 @@ impl State {
 /// result
 fn parse_movetext(game: String) -> (Vec<Move>, String) {
     let mut in_brackets = false;
+    let mut in_parens = false;
     let mut ret = String::new();
     for c in game.chars() {
         if c == '{' {
@@ -68,6 +69,13 @@ fn parse_movetext(game: String) -> (Vec<Move>, String) {
         } else if in_brackets {
             if c == '}' {
                 in_brackets = false;
+            }
+            continue;
+        } else if c == '(' {
+            in_parens = true;
+        } else if in_parens {
+            if c == ')' {
+                in_parens = false;
             }
             continue;
         } else {

@@ -15,7 +15,7 @@ mod stockfish;
 
 struct Args {
     depth: usize,
-    input: String,
+    input: Pgn,
 }
 
 impl Args {
@@ -26,10 +26,18 @@ impl Args {
                     .value_parser(value_parser!(usize))
                     .default_value("20"),
             )
-            .arg(arg!(<input> "PGN file to score"))
+            .arg(arg!([input] "PGN file to score"))
             .get_matches();
         let depth = *args.get_one::<usize>("depth").unwrap();
-        let input = args.get_one::<String>("input").unwrap().to_owned();
+        let input = args.get_one::<String>("input");
+        let input = match input {
+            Some(f) => Pgn::load(f).unwrap(),
+            None => Pgn::read(&mut std::io::stdin()).unwrap(),
+        };
+        if input.games.is_empty() {
+            eprintln!("no games in input");
+            std::process::exit(0);
+        }
         Self { depth, input }
     }
 }
@@ -39,10 +47,9 @@ static DEBUG: LazyLock<bool> =
 
 fn main() {
     let args = Args::new();
-    let pgn = Pgn::load(args.input).unwrap();
     let mut stockfish = Stockfish::new();
 
-    for (g, pgn) in pgn.games.iter().enumerate() {
+    for (g, pgn) in args.input.games.iter().enumerate() {
         let (w, b) = pgn.players();
         eprintln!("starting game {}: {} - {}", g + 1, w, b);
         let now = Instant::now();

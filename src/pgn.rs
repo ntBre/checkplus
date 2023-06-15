@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Read},
     mem::take,
     path::Path,
     str::FromStr,
@@ -93,7 +93,11 @@ fn parse_movetext(game: String) -> (Vec<Move>, String) {
 impl Pgn {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let f = File::open(path)?;
-        let r = BufReader::new(f);
+        Self::read(f)
+    }
+
+    pub fn read(r: impl Read) -> Result<Pgn, io::Error> {
+        let r = BufReader::new(r);
         let mut games = Vec::new();
         let mut game = String::new();
         let mut tags = HashMap::new();
@@ -119,14 +123,12 @@ impl Pgn {
                 game.push(' '); // keep separation from newlines
             }
         }
-
         let (moves, result) = parse_movetext(game);
         games.push(Game {
             moves,
             result,
             tags,
         });
-
         Ok(Self { games })
     }
 }

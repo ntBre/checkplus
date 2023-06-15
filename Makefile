@@ -6,3 +6,9 @@ run:
 
 test:
 	cargo test -- --nocapture --test-threads=1 $(ARGS)
+
+build:
+	cargo build --release
+
+install:
+	cp -i target/release/checkplus /usr/bin/checkplus

@@ -58,6 +58,11 @@ impl Piece {
 	};
         match typ {
             PieceType::King => {
+                // cast as isize to prevent underflow
+                let from_rank = from_rank as isize;
+                let dest_rank = dest_rank as isize;
+                let from_file = from_file as isize;
+                let dest_file = dest_file as isize;
                 match color {
                     Color::Black => {
                         board.black_can_castle_kingside = false;

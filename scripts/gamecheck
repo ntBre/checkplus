@@ -1,0 +1,6 @@
+#!/bin/bash
+
+depth=5
+xclip -selection clipboard -out \
+    | checkplus -d $depth \
+    | gnuplot -p -e "set title \"Depth = $depth\"; unset key; plot '-' with lines"

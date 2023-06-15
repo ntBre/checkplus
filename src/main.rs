@@ -53,18 +53,20 @@ fn main() {
 
     let mut to_move = [Color::Black, Color::White].iter().cycle();
 
-    for (i, m) in pgn.moves.iter().enumerate() {
-        let i = i + 1;
-        board.make_move(m, *cur);
-        cur = to_move.next().unwrap();
-        let fen = board.fen(i);
-        stockfish.set_position(&fen);
-        let score = stockfish.get_score(args.depth, *cur);
-        print!("{i} {score:.2}");
-        if *DEBUG {
-            println!(" {fen}");
-        } else {
-            println!();
+    for pgn in pgn.games {
+        for (i, m) in pgn.moves.iter().enumerate() {
+            let i = i + 1;
+            board.make_move(m, *cur);
+            cur = to_move.next().unwrap();
+            let fen = board.fen(i);
+            stockfish.set_position(&fen);
+            let score = stockfish.get_score(args.depth, *cur);
+            print!("{i} {score:.2}");
+            if *DEBUG {
+                println!(" {fen}");
+            } else {
+                println!();
+            }
         }
     }
 }

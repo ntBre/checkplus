@@ -74,7 +74,7 @@ fn samples() {
         Test::new(85, "8/8/4R1p1/2k3p1/1p4P1/1P1b1P2/3K1n2/8 b - - 2 43"),
     ];
 
-    let game = Pgn::load("testfiles/sample.pgn").unwrap();
+    let game = &Pgn::load("testfiles/sample.pgn").unwrap().games[0];
     for test in tests {
         let mut board = Board::new();
         let mut to_move = [Color::White, Color::Black].into_iter().cycle();

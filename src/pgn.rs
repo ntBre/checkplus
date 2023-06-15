@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{self, BufRead, BufReader},
+    mem::take,
     path::Path,
     str::FromStr,
 };
@@ -14,10 +15,15 @@ pub mod mov;
 mod tests;
 
 #[derive(Debug, PartialEq)]
-pub struct Pgn {
+pub struct Game {
     pub moves: Vec<mov::Move>,
     pub result: String,
     pub tags: HashMap<String, String>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Pgn {
+    pub games: Vec<Game>,
 }
 
 enum State {
@@ -53,8 +59,6 @@ fn parse_movetext(game: String) -> (Vec<Move>, String) {
         }
     }
 
-    dbg!(&ret);
-
     let mut chunks: Vec<_> = ret.split_ascii_whitespace().collect();
 
     // delete the result from the end
@@ -74,7 +78,7 @@ impl Pgn {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let f = File::open(path)?;
         let r = BufReader::new(f);
-        // let mut games = Vec::new();
+        let mut games = Vec::new();
         let mut game = String::new();
         let mut tags = HashMap::new();
         use State::*;
@@ -87,10 +91,13 @@ impl Pgn {
             } else if state.is_tags() && line.is_empty() {
                 state = Moves;
             } else if state.is_moves() && line.is_empty() {
-                // state = Tags;
-                // games.push(moves);
-                // moves.clear();
-                break; // TODO go on to the next game
+                state = Tags;
+                let (moves, result) = parse_movetext(take(&mut game));
+                games.push(Game {
+                    moves,
+                    result,
+                    tags: take(&mut tags),
+                });
             } else {
                 game.push_str(&line);
                 game.push(' '); // keep separation from newlines
@@ -98,10 +105,12 @@ impl Pgn {
         }
 
         let (moves, result) = parse_movetext(game);
-        Ok(Self {
+        games.push(Game {
             moves,
             result,
             tags,
-        })
+        });
+
+        Ok(Self { games })
     }
 }

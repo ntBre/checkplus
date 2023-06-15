@@ -92,6 +92,9 @@ impl Stockfish {
         for line in output.split('\n') {
             if line.starts_with("info") {
                 let mut sp = line.split_ascii_whitespace();
+                if sp.clone().any(|s| s == "mate") {
+                    return 99.0;
+                }
                 // not found on line saying NNUE is enabled
                 if sp.any(|s| s == "cp") {
                     let text = sp.next().unwrap();

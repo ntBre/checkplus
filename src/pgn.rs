@@ -21,6 +21,22 @@ pub struct Game {
     pub tags: HashMap<String, String>,
 }
 
+impl Game {
+    pub fn players(&self) -> (String, String) {
+        let white = self
+            .tags
+            .get("White")
+            .cloned()
+            .unwrap_or_else(|| String::from("NN"));
+        let black = self
+            .tags
+            .get("Black")
+            .cloned()
+            .unwrap_or_else(|| String::from("NN"));
+        (white, black)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Pgn {
     pub games: Vec<Game>,

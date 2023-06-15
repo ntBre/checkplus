@@ -1,6 +1,7 @@
 #![feature(array_chunks, let_chains, lazy_cell)]
 
 use std::sync::LazyLock;
+use std::time::Instant;
 
 use clap::{arg, value_parser, Command};
 
@@ -38,22 +39,23 @@ static DEBUG: LazyLock<bool> =
 
 fn main() {
     let args = Args::new();
-
     let pgn = Pgn::load(args.input).unwrap();
-    let mut board = Board::new();
-
     let mut stockfish = Stockfish::new();
 
-    stockfish.new_game();
-    stockfish.start_position();
+    for (g, pgn) in pgn.games.iter().enumerate() {
+        let (w, b) = pgn.players();
+        eprintln!("starting game {}: {} - {}", g + 1, w, b);
+        let now = Instant::now();
 
-    let mut cur = &Color::White;
-    let score = stockfish.get_score(args.depth, *cur);
-    println!("0 {score}");
+        let mut board = Board::new();
+        stockfish.new_game();
+        stockfish.start_position();
 
-    let mut to_move = [Color::Black, Color::White].iter().cycle();
+        let mut cur = &Color::White;
+        let score = stockfish.get_score(args.depth, *cur);
+        println!("0 {score}");
 
-    for pgn in pgn.games {
+        let mut to_move = [Color::Black, Color::White].iter().cycle();
         for (i, m) in pgn.moves.iter().enumerate() {
             let i = i + 1;
             board.make_move(m, *cur);
@@ -68,5 +70,11 @@ fn main() {
                 println!();
             }
         }
+
+        eprintln!(
+            "finished game {} after {:.1} sec\n",
+            g + 1,
+            now.elapsed().as_millis() as f64 / 1000.0
+        );
     }
 }

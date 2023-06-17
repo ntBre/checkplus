@@ -132,35 +132,7 @@ mod gui {
                     color = colors.next().unwrap();
                 }
 
-                for rank in 0..8 {
-                    for file in 0..8 {
-                        match b[(rank, file)] {
-                            p @ Piece::Some { color, .. } => {
-                                let t = p.to_char().unwrap().to_uppercase();
-                                let c = match color {
-                                    crate::board::Color::Black => 'b',
-                                    crate::board::Color::White => 'w',
-                                };
-                                let filename = format!("assets/{c}{t}.svg");
-                                let mut img = SvgImage::load(filename).unwrap();
-                                img.scale(
-                                    square_width as i32,
-                                    square_height as i32,
-                                    true,
-                                    true,
-                                );
-                                let rank = 7 - rank;
-                                img.draw(
-                                    (file * square_width) as i32,
-                                    (rank * square_width) as i32,
-                                    square_width as i32,
-                                    square_height as i32,
-                                );
-                            }
-                            Piece::None => (),
-                        }
-                    }
-                }
+                draw_board(&b, square_width, square_height);
             });
 
             win.end();
@@ -173,15 +145,52 @@ mod gui {
             self.app.run().unwrap();
         }
     }
+
+    /// draw the pieces in `b` onto the current widget (?)
+    fn draw_board(b: &Board, square_width: usize, square_height: usize) {
+        for rank in 0..8 {
+            for file in 0..8 {
+                match b[(rank, file)] {
+                    p @ Piece::Some { color, .. } => {
+                        let t = p.to_char().unwrap().to_uppercase();
+                        let c = match color {
+                            crate::board::Color::Black => 'b',
+                            crate::board::Color::White => 'w',
+                        };
+                        let filename = format!("assets/{c}{t}.svg");
+                        let mut img = SvgImage::load(filename).unwrap();
+                        img.scale(
+                            square_width as i32,
+                            square_height as i32,
+                            true,
+                            true,
+                        );
+                        let rank = 7 - rank;
+                        img.draw(
+                            (file * square_width) as i32,
+                            (rank * square_width) as i32,
+                            square_width as i32,
+                            square_height as i32,
+                        );
+                    }
+                    Piece::None => (),
+                }
+            }
+        }
+    }
 }
 
 #[allow(unused)]
 fn main() {
-    let board = Board::new();
-    let app = gui::MyApp::new(board);
-    app.run();
-    return;
     let args = Args::new();
+
+    if args.gui {
+        let board = Board::new();
+        let app = gui::MyApp::new(board);
+        app.run();
+        return;
+    }
+
     let mut stockfish = Stockfish::new();
 
     for (g, pgn) in args.input.games.iter().enumerate() {

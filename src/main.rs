@@ -56,10 +56,15 @@ mod gui {
         *,
     };
 
-    use crate::PROGRAM_TITLE;
+    use crate::{
+        board::{piece::Piece, Board},
+        PROGRAM_TITLE,
+    };
 
     pub(crate) struct MyApp {
         app: app::App,
+        #[allow(unused)]
+        board: Board,
     }
 
     fn menu_cb(m: &mut impl MenuExt) {
@@ -90,7 +95,7 @@ mod gui {
             );
         }
 
-        pub fn new() -> Self {
+        pub fn new(board: Board) -> Self {
             let app = app::App::default();
 
             let mut win = Window::new(100, 100, 800, 600, PROGRAM_TITLE);
@@ -99,7 +104,8 @@ mod gui {
             let mut draw_window =
                 Window::default().with_size(400, 400).center_of(&win);
 
-            draw_window.draw(|f| {
+            let b = board.clone();
+            draw_window.draw(move |f| {
                 use draw::*;
 
                 let width = f.w();
@@ -126,27 +132,41 @@ mod gui {
                     color = colors.next().unwrap();
                 }
 
-                // black rook
-                let mut img = SvgImage::load("assets/bR.svg").unwrap();
-                img.scale(
-                    square_width as i32,
-                    square_height as i32,
-                    true,
-                    true,
-                );
-                img.draw(0, 0, square_width as i32, square_height as i32);
-                img.draw(
-                    7 * square_width as i32,
-                    0,
-                    square_width as i32,
-                    square_height as i32,
-                );
+                for rank in 0..8 {
+                    for file in 0..8 {
+                        match b[(rank, file)] {
+                            p @ Piece::Some { color, .. } => {
+                                let t = p.to_char().unwrap().to_uppercase();
+                                let c = match color {
+                                    crate::board::Color::Black => 'b',
+                                    crate::board::Color::White => 'w',
+                                };
+                                let filename = format!("assets/{c}{t}.svg");
+                                let mut img = SvgImage::load(filename).unwrap();
+                                img.scale(
+                                    square_width as i32,
+                                    square_height as i32,
+                                    true,
+                                    true,
+                                );
+                                let rank = 7 - rank;
+                                img.draw(
+                                    (file * square_width) as i32,
+                                    (rank * square_width) as i32,
+                                    square_width as i32,
+                                    square_height as i32,
+                                );
+                            }
+                            Piece::None => (),
+                        }
+                    }
+                }
             });
 
             win.end();
             win.show();
 
-            Self { app }
+            Self { app, board }
         }
 
         pub fn run(self) {
@@ -157,7 +177,8 @@ mod gui {
 
 #[allow(unused)]
 fn main() {
-    let app = gui::MyApp::new();
+    let board = Board::new();
+    let app = gui::MyApp::new(board);
     app.run();
     return;
     let args = Args::new();

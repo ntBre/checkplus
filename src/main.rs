@@ -15,6 +15,7 @@ mod stockfish;
 
 struct Args {
     depth: usize,
+    gui: bool,
     input: Pgn,
 }
 
@@ -26,19 +27,34 @@ impl Args {
                     .value_parser(value_parser!(usize))
                     .default_value("20"),
             )
+            .arg(
+                arg!(-g --gui "Run the GUI")
+                    .value_parser(value_parser!(bool))
+                    .default_value("false"),
+            )
             .arg(arg!([input] "PGN file to score"))
             .get_matches();
         let depth = *args.get_one::<usize>("depth").unwrap();
+        let gui = *args.get_one::<bool>("gui").unwrap();
         let input = args.get_one::<String>("input");
         let input = match input {
-            Some(f) => Pgn::load(f).unwrap(),
-            None => Pgn::read(&mut std::io::stdin()).unwrap(),
+            Some(f) => {
+                let pgn = Pgn::load(f).unwrap();
+                if pgn.games.is_empty() {
+                    eprintln!("no games in input");
+                    std::process::exit(0);
+                }
+                pgn
+            }
+            None => {
+                if gui {
+                    Pgn::default()
+                } else {
+                    Pgn::read(&mut std::io::stdin()).unwrap()
+                }
+            }
         };
-        if input.games.is_empty() {
-            eprintln!("no games in input");
-            std::process::exit(0);
-        }
-        Self { depth, input }
+        Self { depth, gui, input }
     }
 }
 

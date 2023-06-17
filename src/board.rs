@@ -11,7 +11,7 @@ mod display;
 pub(crate) mod file;
 mod index;
 pub use index::Coord;
-mod piece;
+pub mod piece;
 
 #[cfg(test)]
 mod tests;
@@ -106,6 +106,7 @@ macro_rules! white {
 
 pub(crate) type Square = (usize, usize);
 
+#[derive(Clone)]
 pub struct Board {
     board: [[Piece; 8]; 8],
     half_move_clock: usize,

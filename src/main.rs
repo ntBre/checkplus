@@ -50,6 +50,7 @@ const PROGRAM_TITLE: &'static str = "checkplus";
 mod gui {
     use fltk::{
         enums::{Color, Shortcut},
+        image::SvgImage,
         prelude::*,
         window::Window,
         *,
@@ -107,7 +108,9 @@ mod gui {
 
                 let square_height = height as usize / 8;
                 let square_width = width as usize / 8;
-                let mut colors = [Color::White, Color::Black].iter().cycle();
+                let brown = Color::from_rgb(0x8b, 0x45, 0x13);
+                let colors = [Color::White, brown];
+                let mut colors = colors.iter().cycle();
                 let mut color = colors.next().unwrap();
                 for row in (0..height).step_by(square_height) {
                     for col in (0..width).step_by(square_width) {
@@ -122,6 +125,22 @@ mod gui {
                     }
                     color = colors.next().unwrap();
                 }
+
+                // black rook
+                let mut img = SvgImage::load("assets/bR.svg").unwrap();
+                img.scale(
+                    square_width as i32,
+                    square_height as i32,
+                    true,
+                    true,
+                );
+                img.draw(0, 0, square_width as i32, square_height as i32);
+                img.draw(
+                    7 * square_width as i32,
+                    0,
+                    square_width as i32,
+                    square_height as i32,
+                );
             });
 
             win.end();

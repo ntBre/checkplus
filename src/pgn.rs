@@ -37,7 +37,7 @@ impl Game {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Pgn {
     pub games: Vec<Game>,
 }

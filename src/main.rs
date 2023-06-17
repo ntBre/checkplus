@@ -45,7 +45,102 @@ impl Args {
 static DEBUG: LazyLock<bool> =
     LazyLock::new(|| std::env::var("CHECK_PLUS_DEBUG").is_ok());
 
+const PROGRAM_TITLE: &'static str = "checkplus";
+
+mod gui {
+    use fltk::{
+        enums::{Color, Shortcut},
+        prelude::*,
+        window::Window,
+        *,
+    };
+
+    use crate::PROGRAM_TITLE;
+
+    pub(crate) struct MyApp {
+        app: app::App,
+    }
+
+    fn menu_cb(m: &mut impl MenuExt) {
+        if let Some(choice) = m.choice() {
+            match choice.as_str() {
+                "New\t" => println!("New"),
+                "Open\t" => println!("Open"),
+                "Third" => println!("Third"),
+                "Quit\t" => {
+                    println!("Quitting");
+                    app::quit();
+                }
+                _ => println!("{}", choice),
+            }
+        }
+    }
+
+    impl MyApp {
+        #[allow(unused)]
+        fn menubar() {
+            let mut menubar = menu::SysMenuBar::new(0, 0, 40, 40, "rew");
+            menubar.global();
+            menubar.add(
+                "File/New\t",
+                Shortcut::None,
+                menu::MenuFlag::Normal,
+                menu_cb,
+            );
+        }
+
+        pub fn new() -> Self {
+            let app = app::App::default();
+
+            let mut win = Window::new(100, 100, 800, 600, PROGRAM_TITLE);
+            win.make_resizable(false);
+
+            let mut draw_window =
+                Window::default().with_size(400, 400).center_of(&win);
+
+            draw_window.draw(|f| {
+                use draw::*;
+
+                let width = f.w();
+                let height = f.h();
+                draw_rect_fill(0, 0, width, height, enums::Color::White);
+
+                let square_height = height as usize / 8;
+                let square_width = width as usize / 8;
+                let mut colors = [Color::White, Color::Black].iter().cycle();
+                let mut color = colors.next().unwrap();
+                for row in (0..height).step_by(square_height) {
+                    for col in (0..width).step_by(square_width) {
+                        draw_rect_fill(
+                            col,
+                            row,
+                            square_width as i32,
+                            square_height as i32,
+                            *color,
+                        );
+                        color = colors.next().unwrap();
+                    }
+                    color = colors.next().unwrap();
+                }
+            });
+
+            win.end();
+            win.show();
+
+            Self { app }
+        }
+
+        pub fn run(self) {
+            self.app.run().unwrap();
+        }
+    }
+}
+
+#[allow(unused)]
 fn main() {
+    let app = gui::MyApp::new();
+    app.run();
+    return;
     let args = Args::new();
     let mut stockfish = Stockfish::new();
 

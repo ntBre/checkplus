@@ -2,6 +2,8 @@
 
 score the moves in a chess game with a UCI engine
 
+![the GUI so far](screenshot.png)
+
 # Usage
 
 You can pass an optional depth at which to examine each move and a required path

@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 clap = "4.3.4"
+eframe = { version = "0.22.0", default-features = false, features = [ "glow" ] }
+egui = "0.22.0"

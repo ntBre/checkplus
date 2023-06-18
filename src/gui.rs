@@ -1,21 +1,27 @@
-use eframe::App;
-use egui::{vec2, Color32, Frame, Pos2, Rect, Rounding, Style};
+use std::{collections::HashMap, io::Read};
 
-use crate::board::{piece::Piece, Board};
+use eframe::App;
+use egui::{
+    pos2, vec2, Color32, ColorImage, Frame, Pos2, Rect, Rounding, Style,
+    TextureHandle,
+};
+use egui_extras::image::load_svg_bytes_with_size;
+
+use crate::board::{self, piece::Piece, Board, PieceType};
 
 pub(crate) struct MyApp {
     board: Board,
+
+    /// map of piece SVGs, initialized when `self` is created.
+    piece_images: HashMap<Piece, ColorImage>,
+
+    /// map of piece textures, created as needed by [Self::draw_board].
+    pieces: HashMap<Piece, TextureHandle>,
 }
 
 impl App for MyApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        // Examples of how to create different panels and windows.
-        // Pick whichever suits you.
-        // Tip: a good default choice is to just keep the `CentralPanel`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
-
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
@@ -32,84 +38,86 @@ impl App for MyApp {
                     let desired_width = 0.5 * ui.available_width();
                     let (_id, rect) =
                         ui.allocate_space(vec2(desired_width, desired_width));
-                    let ymin = rect.top();
-                    let ymax = rect.bottom();
-                    let xmin = rect.left();
-                    let xmax = rect.right();
-                    let square_width = (xmax - xmin) / 8.0;
-                    let square_height = (ymax - ymin) / 8.0;
-
-                    let mut colors =
-                        [Color32::WHITE, Color32::BROWN].into_iter().cycle();
-                    let mut color = colors.next().unwrap();
-
-                    for row in 0..8 {
-                        for col in 0..8 {
-                            let x = col as f32 * square_width + xmin;
-                            let y = row as f32 * square_height + ymin;
-                            ui.painter().rect_filled(
-                                Rect {
-                                    min: Pos2::new(x, y),
-                                    max: Pos2::new(
-                                        x + square_width,
-                                        y + square_height,
-                                    ),
-                                },
-                                Rounding::none(),
-                                color,
-                            );
-                            color = colors.next().unwrap();
-                        }
-                        color = colors.next().unwrap();
-                    }
-                    // let to_screen = emath::RectTransform::from_to(
-                    //     Rect::from_x_y_ranges(0.0..=1.0, -1.0..=1.0),
-                    //     rect,
-                    // );
+                    self.draw_board(rect, ui);
                 },
             );
         });
     }
 }
 
-#[allow(unused)]
 impl MyApp {
     pub(crate) fn new(board: Board) -> Self {
-        Self { board }
+        let mut piece_images = HashMap::new();
+
+        for c in ['b', 'w'] {
+            let color = match c {
+                'b' => board::Color::Black,
+                'w' => board::Color::White,
+                _ => unreachable!(),
+            };
+            for piece in ['B', 'K', 'N', 'P', 'Q', 'R'] {
+                let typ = PieceType::from(piece);
+                let filename = format!("assets/{c}{piece}.svg");
+                let mut f = std::fs::File::open(filename).unwrap();
+                let mut buf = Vec::new();
+                f.read_to_end(&mut buf).unwrap();
+                let p = Piece::Some { typ, color };
+                let data = load_svg_bytes_with_size(
+                    &buf,
+                    egui_extras::image::FitTo::Zoom(3.0),
+                )
+                .unwrap();
+                piece_images.insert(p, data);
+            }
+        }
+
+        Self {
+            board,
+            piece_images,
+            pieces: HashMap::new(),
+        }
     }
 
-    pub fn run(self) {}
-
-    /// draw the pieces in `b` onto the current widget (?)
-    fn draw_board(&self) {
+    fn draw_board(&mut self, Rect { min, max }: Rect, ui: &mut egui::Ui) {
+        let Pos2 { x: xmin, y: ymin } = min;
+        let Pos2 { x: xmax, y: ymax } = max;
+        let square_width = (xmax - xmin) / 8.0;
+        let square_height = (ymax - ymin) / 8.0;
+        let mut colors = [Color32::WHITE, Color32::BROWN].into_iter().cycle();
+        let mut color = colors.next().unwrap();
         for rank in 0..8 {
+            let rank = 7 - rank;
             for file in 0..8 {
-                match self.board[(rank, file)] {
-                    p @ Piece::Some { color, .. } => {
-                        // let t = p.to_char().unwrap().to_uppercase();
-                        // let c = match color {
-                        //     crate::board::Color::Black => 'b',
-                        //     crate::board::Color::White => 'w',
-                        // };
-                        // let filename = format!("assets/{c}{t}.svg");
-                        // let mut img = SvgImage::load(filename).unwrap();
-                        // img.scale(
-                        //     square_width as i32,
-                        //     square_height as i32,
-                        //     true,
-                        //     true,
-                        // );
-                        // let rank = 7 - rank;
-                        // img.draw(
-                        //     (file * square_width) as i32,
-                        //     (rank * square_width) as i32,
-                        //     square_width as i32,
-                        //     square_height as i32,
-                        // );
+                let x = file as f32 * square_width + xmin;
+                let y = rank as f32 * square_height + ymin;
+                let rect = Rect::from_min_max(
+                    Pos2::new(x, y),
+                    Pos2::new(x + square_width, y + square_height),
+                );
+                ui.painter().rect_filled(rect, Rounding::none(), color);
+                color = colors.next().unwrap();
+
+                match self.board[(7 - rank, file)] {
+                    p @ Piece::Some { .. } => {
+                        let texture =
+                            self.pieces.entry(p).or_insert_with(|| {
+                                ui.ctx().load_texture(
+                                    "black rook",
+                                    self.piece_images.get(&p).unwrap().clone(),
+                                    Default::default(),
+                                )
+                            });
+                        ui.painter().image(
+                            texture.into(),
+                            rect,
+                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                            Color32::WHITE,
+                        );
                     }
                     Piece::None => (),
                 }
             }
+            color = colors.next().unwrap();
         }
     }
 }

@@ -34,6 +34,7 @@ impl From<char> for PieceType {
             'R' => Self::Rook,
             'B' => Self::Bishop,
             'N' => Self::Knight,
+            'P' => Self::Pawn,
             _ => todo!("what is this? {c}"),
         }
     }

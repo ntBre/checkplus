@@ -64,7 +64,6 @@ static DEBUG: LazyLock<bool> =
 
 const PROGRAM_TITLE: &str = "checkplus";
 
-#[allow(unused)]
 fn main() {
     let args = Args::new();
 
@@ -72,8 +71,9 @@ fn main() {
         eframe::run_native(
             PROGRAM_TITLE,
             eframe::NativeOptions::default(),
-            Box::new(|cc| Box::new(gui::MyApp::new(Board::new()))),
-        );
+            Box::new(|_cc| Box::new(gui::MyApp::new(Board::new()))),
+        )
+        .unwrap();
         return;
     }
 

@@ -1,17 +1,14 @@
 use eframe::App;
+use egui::{vec2, Color32, Frame, Pos2, Rect, Rounding, Style};
 
 use crate::board::{piece::Piece, Board};
 
 pub(crate) struct MyApp {
-    label: String,
-    value: f32,
     board: Board,
 }
 
 impl App for MyApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let Self { label, value, .. } = self;
-
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
         // Tip: a good default choice is to just keep the `CentralPanel`.
@@ -28,66 +25,57 @@ impl App for MyApp {
             });
         });
 
-        egui::SidePanel::left("side_panel").show(ctx, |ui| {
-            ui.heading("Side Panel");
-
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(label);
-            });
-
-            ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                *value += 1.0;
-            }
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("powered by ");
-                    ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-                    ui.label(" and ");
-                    ui.hyperlink_to(
-			    "eframe",
-			    "https://github.com/emilk/egui/tree/master/crates/eframe",
-			);
-                    ui.label(".");
-                });
-            });
-        });
-
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and
-            // SidePanel's
+            Frame::canvas(&Style::default()).fill(Color32::WHITE).show(
+                ui,
+                |ui| {
+                    let desired_width = 0.5 * ui.available_width();
+                    let (_id, rect) =
+                        ui.allocate_space(vec2(desired_width, desired_width));
+                    let ymin = rect.top();
+                    let ymax = rect.bottom();
+                    let xmin = rect.left();
+                    let xmax = rect.right();
+                    let square_width = (xmax - xmin) / 8.0;
+                    let square_height = (ymax - ymin) / 8.0;
 
-            ui.heading("eframe template");
-            ui.hyperlink("https://github.com/emilk/eframe_template");
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/master/",
-                "Source code."
-            ));
-            egui::warn_if_debug_build(ui);
+                    let mut colors =
+                        [Color32::WHITE, Color32::BROWN].into_iter().cycle();
+                    let mut color = colors.next().unwrap();
+
+                    for row in 0..8 {
+                        for col in 0..8 {
+                            let x = col as f32 * square_width + xmin;
+                            let y = row as f32 * square_height + ymin;
+                            ui.painter().rect_filled(
+                                Rect {
+                                    min: Pos2::new(x, y),
+                                    max: Pos2::new(
+                                        x + square_width,
+                                        y + square_height,
+                                    ),
+                                },
+                                Rounding::none(),
+                                color,
+                            );
+                            color = colors.next().unwrap();
+                        }
+                        color = colors.next().unwrap();
+                    }
+                    // let to_screen = emath::RectTransform::from_to(
+                    //     Rect::from_x_y_ranges(0.0..=1.0, -1.0..=1.0),
+                    //     rect,
+                    // );
+                },
+            );
         });
-
-        if false {
-            egui::Window::new("Window").show(ctx, |ui| {
-                ui.label("Windows can be moved by dragging them.");
-                ui.label("They are automatically sized based on contents.");
-                ui.label("You can turn on resizing and scrolling if you like.");
-                ui.label("You would normally choose either panels OR windows.");
-            });
-        }
     }
 }
 
 #[allow(unused)]
 impl MyApp {
     pub(crate) fn new(board: Board) -> Self {
-        Self {
-            board,
-            label: String::from("Hello world"),
-            value: 3.14,
-        }
+        Self { board }
     }
 
     pub fn run(self) {}

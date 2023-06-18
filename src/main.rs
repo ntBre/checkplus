@@ -61,144 +61,52 @@ impl Args {
 static DEBUG: LazyLock<bool> =
     LazyLock::new(|| std::env::var("CHECK_PLUS_DEBUG").is_ok());
 
-const PROGRAM_TITLE: &'static str = "checkplus";
+const _PROGRAM_TITLE: &'static str = "checkplus";
 
 mod gui {
-    use fltk::{
-        enums::{Color, Event, Shortcut},
-        image::SvgImage,
-        prelude::*,
-        window::Window,
-        *,
-    };
-
-    use crate::{
-        board::{piece::Piece, Board},
-        PROGRAM_TITLE,
-    };
+    use crate::board::{piece::Piece, Board};
 
     pub(crate) struct MyApp {
-        app: app::App,
-        #[allow(unused)]
         board: Board,
     }
 
-    fn menu_cb(m: &mut impl MenuExt) {
-        if let Some(choice) = m.choice() {
-            match choice.as_str() {
-                "New\t" => println!("New"),
-                "Open\t" => println!("Open"),
-                "Third" => println!("Third"),
-                "Quit\t" => {
-                    println!("Quitting");
-                    app::quit();
-                }
-                _ => println!("{}", choice),
-            }
-        }
-    }
-
+    #[allow(unused)]
     impl MyApp {
-        #[allow(unused)]
-        fn menubar() {
-            let mut menubar = menu::SysMenuBar::new(0, 0, 40, 40, "rew");
-            menubar.global();
-            menubar.add(
-                "File/New\t",
-                Shortcut::None,
-                menu::MenuFlag::Normal,
-                menu_cb,
-            );
+        pub(crate) fn new(board: Board) -> Self {
+            Self { board }
         }
 
-        pub fn new(board: Board) -> Self {
-            let app = app::App::default();
+        pub fn run(self) {}
 
-            let mut win = Window::new(100, 100, 800, 600, PROGRAM_TITLE);
-            win.make_resizable(false);
-
-            let mut draw_window =
-                Window::default().with_size(400, 400).center_of(&win);
-
-            let b = board.clone();
-            draw_window.draw(move |f| {
-                use draw::*;
-
-                let width = f.w();
-                let height = f.h();
-                draw_rect_fill(0, 0, width, height, enums::Color::White);
-
-                let square_height = height as usize / 8;
-                let square_width = width as usize / 8;
-                let brown = Color::from_rgb(0x8b, 0x45, 0x13);
-                let colors = [Color::White, brown];
-                let mut colors = colors.iter().cycle();
-                let mut color = colors.next().unwrap();
-                for row in (0..height).step_by(square_height) {
-                    for col in (0..width).step_by(square_width) {
-                        draw_rect_fill(
-                            col,
-                            row,
-                            square_width as i32,
-                            square_height as i32,
-                            *color,
-                        );
-                        color = colors.next().unwrap();
+        /// draw the pieces in `b` onto the current widget (?)
+        fn draw_board(&self) {
+            for rank in 0..8 {
+                for file in 0..8 {
+                    match self.board[(rank, file)] {
+                        p @ Piece::Some { color, .. } => {
+                            // let t = p.to_char().unwrap().to_uppercase();
+                            // let c = match color {
+                            //     crate::board::Color::Black => 'b',
+                            //     crate::board::Color::White => 'w',
+                            // };
+                            // let filename = format!("assets/{c}{t}.svg");
+                            // let mut img = SvgImage::load(filename).unwrap();
+                            // img.scale(
+                            //     square_width as i32,
+                            //     square_height as i32,
+                            //     true,
+                            //     true,
+                            // );
+                            // let rank = 7 - rank;
+                            // img.draw(
+                            //     (file * square_width) as i32,
+                            //     (rank * square_width) as i32,
+                            //     square_width as i32,
+                            //     square_height as i32,
+                            // );
+                        }
+                        Piece::None => (),
                     }
-                    color = colors.next().unwrap();
-                }
-
-                draw_board(&b, square_width, square_height);
-            });
-
-            win.end();
-            win.show();
-
-            Self { app, board }
-        }
-
-        pub fn run(self) {
-            while self.app.wait() {
-                if app::event() == Event::KeyDown {
-                    let down = app::event_key();
-                    dbg!(down);
-                }
-                if app::event() == Event::KeyUp {
-                    let up = app::event_key();
-                    dbg!(up);
-                }
-            }
-        }
-    }
-
-    /// draw the pieces in `b` onto the current widget (?)
-    fn draw_board(b: &Board, square_width: usize, square_height: usize) {
-        for rank in 0..8 {
-            for file in 0..8 {
-                match b[(rank, file)] {
-                    p @ Piece::Some { color, .. } => {
-                        let t = p.to_char().unwrap().to_uppercase();
-                        let c = match color {
-                            crate::board::Color::Black => 'b',
-                            crate::board::Color::White => 'w',
-                        };
-                        let filename = format!("assets/{c}{t}.svg");
-                        let mut img = SvgImage::load(filename).unwrap();
-                        img.scale(
-                            square_width as i32,
-                            square_height as i32,
-                            true,
-                            true,
-                        );
-                        let rank = 7 - rank;
-                        img.draw(
-                            (file * square_width) as i32,
-                            (rank * square_width) as i32,
-                            square_width as i32,
-                            square_height as i32,
-                        );
-                    }
-                    Piece::None => (),
                 }
             }
         }

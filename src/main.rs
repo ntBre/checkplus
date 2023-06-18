@@ -65,7 +65,7 @@ const PROGRAM_TITLE: &'static str = "checkplus";
 
 mod gui {
     use fltk::{
-        enums::{Color, Shortcut},
+        enums::{Color, Event, Shortcut},
         image::SvgImage,
         prelude::*,
         window::Window,
@@ -158,7 +158,16 @@ mod gui {
         }
 
         pub fn run(self) {
-            self.app.run().unwrap();
+            while self.app.wait() {
+                if app::event() == Event::KeyDown {
+                    let down = app::event_key();
+                    dbg!(down);
+                }
+                if app::event() == Event::KeyUp {
+                    let up = app::event_key();
+                    dbg!(up);
+                }
+            }
         }
     }
 

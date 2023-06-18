@@ -5,7 +5,7 @@ use super::Board;
 
 mod display;
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum Piece {
     Some {
         typ: PieceType,

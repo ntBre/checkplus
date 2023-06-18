@@ -62,19 +62,17 @@ impl Args {
 static DEBUG: LazyLock<bool> =
     LazyLock::new(|| std::env::var("CHECK_PLUS_DEBUG").is_ok());
 
-const _PROGRAM_TITLE: &'static str = "checkplus";
+const PROGRAM_TITLE: &str = "checkplus";
 
 #[allow(unused)]
 fn main() {
     let args = Args::new();
 
     if args.gui {
-        let native_options = eframe::NativeOptions::default();
-        let board = Board::new();
         eframe::run_native(
-            "eframe template",
-            native_options,
-            Box::new(|cc| Box::new(gui::MyApp::new(board))),
+            PROGRAM_TITLE,
+            eframe::NativeOptions::default(),
+            Box::new(|cc| Box::new(gui::MyApp::new(Board::new()))),
         );
         return;
     }

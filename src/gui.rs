@@ -2,15 +2,26 @@ use std::{collections::HashMap, io::Read};
 
 use eframe::App;
 use egui::{
+    plot::{Line, Plot, PlotBounds, PlotPoints},
     pos2, vec2, Color32, ColorImage, Frame, Pos2, Rect, Rounding, Style,
     TextureHandle,
 };
-use egui_extras::image::load_svg_bytes_with_size;
+use egui_extras::{image::load_svg_bytes_with_size, Column, TableBuilder};
 
-use crate::board::{self, piece::Piece, Board, PieceType};
+use crate::{
+    board::{self, piece::Piece, Board, PieceType},
+    pgn::Game,
+};
 
 pub(crate) struct MyApp {
     board: Board,
+
+    game: Game,
+
+    scores: Vec<[f64; 2]>,
+
+    /// maximum absolute score in `scores`
+    score_max: f64,
 
     /// map of piece SVGs, initialized when `self` is created.
     piece_images: HashMap<Piece, ColorImage>,
@@ -32,21 +43,73 @@ impl App for MyApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            Frame::canvas(&Style::default()).fill(Color32::WHITE).show(
-                ui,
-                |ui| {
-                    let desired_width = 0.5 * ui.available_width();
-                    let (_id, rect) =
-                        ui.allocate_space(vec2(desired_width, desired_width));
-                    self.draw_board(rect, ui);
-                },
-            );
+            ui.horizontal(|ui| {
+                Frame::canvas(&Style::default()).fill(Color32::WHITE).show(
+                    ui,
+                    |ui| {
+                        let desired_width = 0.5 * ui.available_width();
+                        let (_id, rect) = ui
+                            .allocate_space(vec2(desired_width, desired_width));
+                        self.draw_board(rect, ui);
+                    },
+                );
+                TableBuilder::new(ui)
+                    .column(Column::auto())
+                    .column(Column::auto())
+                    .column(Column::auto())
+                    .body(|mut body| {
+                        let mut moves = self.game.moves.iter().array_chunks();
+                        let mut i = 1;
+                        for [w, b] in moves.by_ref() {
+                            body.row(30.0, |mut row| {
+                                row.col(|ui| {
+                                    ui.label(format!("{i}"));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format!("{w}"));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format!("{b}"));
+                                });
+                                i += 1;
+                            });
+                        }
+                        match moves.into_remainder() {
+                            Some(mut n) => match n.next() {
+                                Some(w) => {
+                                    body.row(30.0, |mut row| {
+                                        row.col(|ui| {
+                                            ui.label(format!("{i}"));
+                                        });
+                                        row.col(|ui| {
+                                            ui.label(format!("{w}"));
+                                        });
+                                    });
+                                }
+                                None => (),
+                            },
+                            None => (),
+                        }
+                    });
+            });
+            Plot::new("game scores").show(ui, |plot_ui| {
+                let min = (1.2 * self.score_max).min(10.0);
+                plot_ui.set_plot_bounds(PlotBounds::from_min_max(
+                    [0.0, -min],
+                    [(self.scores.len() / 2) as f64, min],
+                ));
+                plot_ui.line(
+                    Line::new(PlotPoints::new(self.scores.clone()))
+                        .color(Color32::from_rgb(200, 100, 100))
+                        .name("wave"),
+                );
+            });
         });
     }
 }
 
 impl MyApp {
-    pub(crate) fn new(board: Board) -> Self {
+    pub(crate) fn new(board: Board, game: Game, scores: Vec<f64>) -> Self {
         let mut piece_images = HashMap::new();
 
         for c in ['b', 'w'] {
@@ -71,10 +134,22 @@ impl MyApp {
             }
         }
 
+        let mut out = Vec::with_capacity(scores.len());
+        let mut score_max = scores[0];
+        for (i, s) in scores.into_iter().enumerate() {
+            out.push([i as f64, s]);
+            if s.abs() > score_max {
+                score_max = s.abs();
+            }
+        }
+
         Self {
             board,
             piece_images,
             pieces: HashMap::new(),
+            game,
+            scores: out,
+            score_max,
         }
     }
 

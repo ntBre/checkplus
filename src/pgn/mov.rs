@@ -1,7 +1,7 @@
 use crate::board::file;
 use crate::board::PieceType;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Move {
     Normal {
         /// the type of the piece involved
@@ -15,6 +15,57 @@ pub enum Move {
     },
     KingCastle,
     QueenCastle,
+}
+
+mod display {
+    use std::fmt::Display;
+
+    use super::Move;
+
+    impl Display for Move {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Move::Normal {
+                    typ,
+                    from_rank,
+                    from_file,
+                    dest_rank,
+                    dest_file,
+                } => {
+                    let mut s = String::new();
+                    let t = char::from(*typ);
+                    // skip pawn
+                    if t != 'P' {
+                        s.push(t);
+                        if let Some(n) = from_file {
+                            let c = match *n {
+                                0 => 'a',
+                                1 => 'b',
+                                2 => 'c',
+                                3 => 'd',
+                                4 => 'e',
+                                5 => 'f',
+                                6 => 'g',
+                                7 => 'h',
+                                _ => unimplemented!(),
+                            };
+                            s.push(c);
+                        }
+                    }
+                    if let Some(n) = from_rank {
+                        s.push(char::from_digit(*n as u32 + 1, 10).unwrap());
+                    }
+                    s.push((*dest_file).into());
+                    s.push(
+                        char::from_digit(*dest_rank as u32 + 1, 10).unwrap(),
+                    );
+                    write!(f, "{s}")
+                }
+                Move::KingCastle => write!(f, "O-O"),
+                Move::QueenCastle => write!(f, "O-O-O"),
+            }
+        }
+    }
 }
 
 mod from_str {

@@ -14,7 +14,7 @@ pub mod mov;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Game {
     pub moves: Vec<mov::Move>,
     pub result: String,

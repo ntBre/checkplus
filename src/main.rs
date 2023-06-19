@@ -1,4 +1,4 @@
-#![feature(array_chunks, let_chains, lazy_cell)]
+#![feature(iter_array_chunks, array_chunks, let_chains, lazy_cell)]
 
 use std::sync::LazyLock;
 use std::time::Instant;
@@ -39,22 +39,13 @@ impl Args {
         let gui = *args.get_one::<bool>("gui").unwrap();
         let input = args.get_one::<String>("input");
         let input = match input {
-            Some(f) => {
-                let pgn = Pgn::load(f).unwrap();
-                if pgn.games.is_empty() {
-                    eprintln!("no games in input");
-                    std::process::exit(0);
-                }
-                pgn
-            }
-            None => {
-                if gui {
-                    Pgn::default()
-                } else {
-                    Pgn::read(&mut std::io::stdin()).unwrap()
-                }
-            }
+            Some(f) => Pgn::load(f).unwrap(),
+            None => Pgn::read(&mut std::io::stdin()).unwrap(),
         };
+        if input.games.is_empty() {
+            eprintln!("no games in input");
+            std::process::exit(0);
+        }
         Self { depth, gui, input }
     }
 }
@@ -64,14 +55,61 @@ static DEBUG: LazyLock<bool> =
 
 const PROGRAM_TITLE: &str = "checkplus";
 
+fn score_game(
+    stockfish: &mut Stockfish,
+    game: &pgn::Game,
+    depth: usize,
+) -> Vec<f64> {
+    let mut ret = Vec::with_capacity(game.moves.len());
+    let mut board = Board::new();
+    stockfish.new_game();
+    stockfish.start_position();
+    let mut cur = &Color::White;
+    let score = stockfish.get_score(depth, *cur);
+    println!("0 {score}");
+    let mut to_move = [Color::Black, Color::White].iter().cycle();
+    for (i, m) in game.moves.iter().enumerate() {
+        let i = i + 1;
+        board.make_move(m, *cur);
+        cur = to_move.next().unwrap();
+        let fen = board.fen(i);
+        stockfish.set_position(&fen);
+        let score = stockfish.get_score(depth, *cur);
+        ret.push(score);
+        print!("{i} {score:.2}");
+        if *DEBUG {
+            println!(" {fen}");
+        } else {
+            println!();
+        }
+    }
+    ret
+}
+
 fn main() {
     let args = Args::new();
 
     if args.gui {
+        let game = args.input.games[0].clone();
+        // let mut stockfish = Stockfish::new();
+        // let scores = score_game(&mut stockfish, &game, args.depth);
+        let scores = vec![
+            0.37, 0.35, 0.37, 0.26, 0.37, 0.28, 0.41, 0.45, 0.49, 0.50, 0.55,
+            0.52, 0.48, 0.62, 0.55, 0.50, 0.47, 0.45, 0.50, 0.39, 0.39, 0.41,
+            0.40, 0.01, 0.13, 0.13, 0.44, 0.26, 0.26, 0.26, 0.18, -0.07, -0.16,
+            -0.13, -0.15, -0.18, -0.19, -0.52, -0.58, -0.67, -0.75, -1.16,
+            -1.03, -1.10, -0.66, -0.67, -0.60, -0.71, -0.78, -0.65, -0.56,
+            -0.77, -0.75, -1.10, -1.00, -0.95, -0.97, -0.96, -1.04, -1.22,
+            -1.20, -1.11, -1.33, -1.31, -1.30, -1.16, -0.57, -0.67, -0.34,
+            -0.61, -0.63, -1.49, -1.48, -1.39, -0.42, -0.36, -0.03, -0.00,
+            0.00, -0.00, 0.00, -0.00, -0.05, -0.11, 0.00, -0.09,
+        ];
         eframe::run_native(
             PROGRAM_TITLE,
             eframe::NativeOptions::default(),
-            Box::new(|_cc| Box::new(gui::MyApp::new(Board::new()))),
+            Box::new(|_cc| {
+                Box::new(gui::MyApp::new(Board::new(), game, scores))
+            }),
         )
         .unwrap();
         return;
@@ -84,29 +122,7 @@ fn main() {
         eprintln!("starting game {}: {} - {}", g + 1, w, b);
         let now = Instant::now();
 
-        let mut board = Board::new();
-        stockfish.new_game();
-        stockfish.start_position();
-
-        let mut cur = &Color::White;
-        let score = stockfish.get_score(args.depth, *cur);
-        println!("0 {score}");
-
-        let mut to_move = [Color::Black, Color::White].iter().cycle();
-        for (i, m) in pgn.moves.iter().enumerate() {
-            let i = i + 1;
-            board.make_move(m, *cur);
-            cur = to_move.next().unwrap();
-            let fen = board.fen(i);
-            stockfish.set_position(&fen);
-            let score = stockfish.get_score(args.depth, *cur);
-            print!("{i} {score:.2}");
-            if *DEBUG {
-                println!(" {fen}");
-            } else {
-                println!();
-            }
-        }
+        score_game(&mut stockfish, pgn, args.depth);
 
         eprintln!(
             "finished game {} after {:.1} sec\n",

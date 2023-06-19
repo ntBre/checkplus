@@ -40,6 +40,19 @@ impl From<char> for PieceType {
     }
 }
 
+impl From<PieceType> for char {
+    fn from(value: PieceType) -> Self {
+        match value {
+            PieceType::King => 'K',
+            PieceType::Queen => 'Q',
+            PieceType::Rook => 'R',
+            PieceType::Bishop => 'B',
+            PieceType::Knight => 'N',
+            PieceType::Pawn => 'P',
+        }
+    }
+}
+
 impl PieceType {
     /// Returns `true` if the piece type is [`King`].
     ///

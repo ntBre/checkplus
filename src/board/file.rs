@@ -34,3 +34,18 @@ impl TryFrom<char> for File {
         }
     }
 }
+
+impl From<File> for char {
+    fn from(value: File) -> Self {
+        match value {
+            File::A => 'a',
+            File::B => 'b',
+            File::C => 'c',
+            File::D => 'd',
+            File::E => 'e',
+            File::F => 'f',
+            File::G => 'g',
+            File::H => 'h',
+        }
+    }
+}

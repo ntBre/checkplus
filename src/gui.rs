@@ -96,7 +96,7 @@ impl App for MyApp {
                 let min = (1.2 * self.score_max).min(10.0);
                 plot_ui.set_plot_bounds(PlotBounds::from_min_max(
                     [0.0, -min],
-                    [(self.scores.len() / 2) as f64, min],
+                    [self.scores.len() as f64, min],
                 ));
                 plot_ui.line(
                     Line::new(PlotPoints::new(self.scores.clone()))

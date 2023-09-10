@@ -102,6 +102,13 @@ impl Color {
     pub fn is_white(&self) -> bool {
         matches!(self, Self::White)
     }
+
+    pub(crate) fn other(&self) -> Color {
+        match self {
+            Color::Black => Color::White,
+            Color::White => Color::Black,
+        }
+    }
 }
 
 /// construct a row of black pieces

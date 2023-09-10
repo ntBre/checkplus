@@ -16,7 +16,7 @@ mod tests;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Game {
-    pub moves: Vec<mov::Move>,
+    pub moves: Vec<Move>,
     pub result: String,
     pub tags: HashMap<String, String>,
 }
@@ -91,7 +91,7 @@ fn parse_movetext(game: String) -> (Vec<Move>, String) {
     let mut moves = Vec::new();
     for m in chunks {
         if !m.starts_with(char::is_numeric) {
-            moves.push(mov::Move::from_str(m).unwrap());
+            moves.push(Move::from_str(m).unwrap());
         }
     }
 

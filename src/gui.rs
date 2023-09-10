@@ -43,17 +43,7 @@ impl App for MyApp {
         // key handling
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowRight)) {
             if let Some(m) = self.cur_move {
-                self.board.make_move(&self.game.moves[m], self.cur_color);
-                if self.boards.len() <= m + 2 {
-                    self.boards.resize(m + 2, Board::default());
-                }
-                self.boards[m + 1] = self.board.clone();
-                if m + 1 < self.game.moves.len() {
-                    self.cur_move = Some(m + 1);
-                    self.cur_color = self.cur_color.other();
-                } else {
-                    self.cur_move = None;
-                }
+                self.make_move(m);
             }
         }
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
@@ -97,7 +87,8 @@ impl App for MyApp {
                     .column(Column::auto())
                     .column(Column::auto())
                     .body(|mut body| {
-                        let mut moves = self.game.moves.iter().array_chunks();
+                        let mut moves =
+                            self.game.moves.clone().into_iter().array_chunks();
                         let mut i = 1;
                         for [w, b] in moves.by_ref() {
                             body.row(30.0, |mut row| {
@@ -105,10 +96,22 @@ impl App for MyApp {
                                     ui.label(format!("{i}"));
                                 });
                                 row.col(|ui| {
-                                    ui.label(format!("{w}"));
+                                    if ui.button(format!("{w}")).clicked() {
+                                        let n = 2 * (i - 1) + 1;
+                                        self.get_board(n);
+                                        self.board = self.boards[n].clone();
+                                        self.cur_move = Some(n);
+                                        self.cur_color = Color::Black;
+                                    }
                                 });
                                 row.col(|ui| {
-                                    ui.label(format!("{b}"));
+                                    if ui.button(format!("{b}")).clicked() {
+                                        let n = 2 * i;
+                                        self.get_board(n);
+                                        self.board = self.boards[n].clone();
+                                        self.cur_move = Some(n);
+                                        self.cur_color = Color::White;
+                                    }
                                 });
                                 i += 1;
                             });
@@ -234,6 +237,34 @@ impl MyApp {
                 }
             }
             color = colors.next().unwrap();
+        }
+    }
+
+    /// make the `m`th move on `self.board`, keeping `cur_color`, `cur_move`,
+    /// and `boards` up to date
+    fn make_move(&mut self, m: usize) {
+        self.board.make_move(&self.game.moves[m], self.cur_color);
+        if self.boards.len() <= m + 2 {
+            self.boards.resize(m + 2, Board::default());
+        }
+        self.boards[m + 1] = self.board.clone();
+        if m + 1 < self.game.moves.len() {
+            self.cur_move = Some(m + 1);
+            self.cur_color = self.cur_color.other();
+        } else {
+            self.cur_move = None;
+        }
+    }
+
+    /// get the `n`th board from self.boards or make moves until it can be
+    /// gotten
+    fn get_board(&mut self, n: usize) {
+        if self.boards.get(n).is_none() {
+            let mut cur = self.cur_move.unwrap();
+            while cur <= n + 1 {
+                self.make_move(cur);
+                cur += 1;
+            }
         }
     }
 }

@@ -23,6 +23,9 @@ pub(crate) struct MyApp {
 
     cur_color: Color,
 
+    /// cache of previous boards for going backwards through a game
+    boards: Vec<Board>,
+
     scores: Vec<[f64; 2]>,
 
     /// maximum absolute score in `scores`
@@ -41,6 +44,10 @@ impl App for MyApp {
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowRight)) {
             if let Some(m) = self.cur_move {
                 self.board.make_move(&self.game.moves[m], self.cur_color);
+                if self.boards.len() <= m + 2 {
+                    self.boards.resize(m + 2, Board::default());
+                }
+                self.boards[m + 1] = self.board.clone();
                 if m + 1 < self.game.moves.len() {
                     self.cur_move = Some(m + 1);
                     self.cur_color = self.cur_color.other();
@@ -50,7 +57,17 @@ impl App for MyApp {
             }
         }
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
-            eprintln!("left arrow");
+            if let Some(m) = self.cur_move {
+                if m != 0 {
+                    self.board = self.boards[m - 1].clone();
+                    self.cur_move = Some(m - 1);
+                    self.cur_color = self.cur_color.other();
+                }
+            } else {
+                let m = self.game.moves.len() - 1;
+                self.board = self.boards[m].clone();
+                self.cur_move = Some(m);
+            }
         }
 
         // top panel
@@ -166,7 +183,7 @@ impl MyApp {
         }
 
         Self {
-            board,
+            board: board.clone(),
             piece_images,
             pieces: HashMap::new(),
             game,
@@ -174,6 +191,7 @@ impl MyApp {
             score_max,
             cur_move: Some(0),
             cur_color: Color::White,
+            boards: vec![board],
         }
     }
 

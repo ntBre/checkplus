@@ -9,7 +9,7 @@ use egui::{
 use egui_extras::{image::load_svg_bytes_with_size, Column, TableBuilder};
 
 use crate::{
-    board::{self, piece::Piece, Board, PieceType},
+    board::{self, piece::Piece, Board, Color, PieceType},
     pgn::Game,
 };
 
@@ -17,6 +17,11 @@ pub(crate) struct MyApp {
     board: Board,
 
     game: Game,
+
+    /// the current move in `game`, set to `None` once the game is finished
+    cur_move: Option<usize>,
+
+    cur_color: Color,
 
     scores: Vec<[f64; 2]>,
 
@@ -32,6 +37,23 @@ pub(crate) struct MyApp {
 
 impl App for MyApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // key handling
+        if ctx.input(|i| i.key_pressed(egui::Key::ArrowRight)) {
+            if let Some(m) = self.cur_move {
+                self.board.make_move(&self.game.moves[m], self.cur_color);
+                if m + 1 < self.game.moves.len() {
+                    self.cur_move = Some(m + 1);
+                    self.cur_color = self.cur_color.other();
+                } else {
+                    self.cur_move = None;
+                }
+            }
+        }
+        if ctx.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
+            eprintln!("left arrow");
+        }
+
+        // top panel
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -150,6 +172,8 @@ impl MyApp {
             game,
             scores: out,
             score_max,
+            cur_move: Some(0),
+            cur_color: Color::White,
         }
     }
 

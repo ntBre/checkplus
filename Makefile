@@ -10,5 +10,8 @@ test:
 build:
 	cargo build --release
 
+gui:
+	cargo run -- -g testfiles/sample.pgn
+
 install:
 	cp -i target/release/checkplus /usr/bin/checkplus

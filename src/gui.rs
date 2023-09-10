@@ -139,8 +139,7 @@ impl App for MyApp {
                 ));
                 plot_ui.line(
                     Line::new(PlotPoints::new(self.scores.clone()))
-                        .color(Color32::from_rgb(200, 100, 100))
-                        .name("wave"),
+                        .color(Color32::from_rgb(200, 100, 100)),
                 );
             });
         });

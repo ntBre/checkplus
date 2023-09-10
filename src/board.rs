@@ -219,9 +219,9 @@ impl Board {
                     for file in 0..8 {
                         let p = self[(rank, file)];
                         // skip empty square
-                        let Piece::Some{ typ, color } = p else {
-			    continue;
-			};
+                        let Piece::Some { typ, color } = p else {
+                            continue;
+                        };
                         // skip piece type or color mismatch
                         if typ != *t || color != c {
                             continue;

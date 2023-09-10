@@ -53,9 +53,9 @@ impl Piece {
         dest_file: usize,
     ) -> bool {
         board.en_passant_target = None;
-        let Self::Some { typ, color} = self else {
-	    return false;
-	};
+        let Self::Some { typ, color } = self else {
+            return false;
+        };
         match typ {
             PieceType::King => {
                 // cast as isize to prevent underflow
